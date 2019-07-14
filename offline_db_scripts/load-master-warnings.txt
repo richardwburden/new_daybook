@@ -1,0 +1,14 @@
+Level	Code	Message
+Warning	1265	Data truncated for column 'first_page' at row 15083
+Warning	1265	Data truncated for column 'last_page' at row 15083
+Warning	1261	Row 15083 doesn't contain data for all columns
+Warning	1261	Row 905139 doesn't contain data for all columns
+Warning	1261	Row 905139 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns
+Warning	1261	Row 905140 doesn't contain data for all columns

@@ -1,0 +1,208 @@
+Level	Code	Message
+Warning	1262	Row 377042 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 402249
+Warning	1262	Row 402249 was truncated; it contained more data than there were input columns
+Warning	1262	Row 408930 was truncated; it contained more data than there were input columns
+Warning	1262	Row 411139 was truncated; it contained more data than there were input columns
+Warning	1262	Row 414986 was truncated; it contained more data than there were input columns
+Warning	1262	Row 423749 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 425819
+Warning	1262	Row 425819 was truncated; it contained more data than there were input columns
+Warning	1262	Row 445466 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 462712
+Warning	1262	Row 462712 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 468530
+Warning	1262	Row 468530 was truncated; it contained more data than there were input columns
+Warning	1262	Row 494435 was truncated; it contained more data than there were input columns
+Warning	1262	Row 545523 was truncated; it contained more data than there were input columns
+Warning	1262	Row 547142 was truncated; it contained more data than there were input columns
+Warning	1262	Row 547149 was truncated; it contained more data than there were input columns
+Warning	1262	Row 547156 was truncated; it contained more data than there were input columns
+Warning	1262	Row 585530 was truncated; it contained more data than there were input columns
+Warning	1262	Row 585831 was truncated; it contained more data than there were input columns
+Warning	1262	Row 590785 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 657963
+Warning	1262	Row 657963 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 698965
+Warning	1262	Row 698965 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 710396
+Warning	1262	Row 710396 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 807861
+Warning	1262	Row 807861 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 813493
+Warning	1262	Row 813493 was truncated; it contained more data than there were input columns
+Warning	1262	Row 820942 was truncated; it contained more data than there were input columns
+Warning	1262	Row 828329 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 840308
+Warning	1262	Row 840308 was truncated; it contained more data than there were input columns
+Warning	1262	Row 865684 was truncated; it contained more data than there were input columns
+Warning	1262	Row 874373 was truncated; it contained more data than there were input columns
+Warning	1262	Row 899214 was truncated; it contained more data than there were input columns
+Warning	1262	Row 953459 was truncated; it contained more data than there were input columns
+Warning	1262	Row 953775 was truncated; it contained more data than there were input columns
+Warning	1262	Row 953777 was truncated; it contained more data than there were input columns
+Warning	1262	Row 953788 was truncated; it contained more data than there were input columns
+Warning	1262	Row 953944 was truncated; it contained more data than there were input columns
+Warning	1262	Row 956183 was truncated; it contained more data than there were input columns
+Warning	1262	Row 956504 was truncated; it contained more data than there were input columns
+Warning	1262	Row 956603 was truncated; it contained more data than there were input columns
+Warning	1262	Row 956716 was truncated; it contained more data than there were input columns
+Warning	1262	Row 957949 was truncated; it contained more data than there were input columns
+Warning	1262	Row 957959 was truncated; it contained more data than there were input columns
+Warning	1262	Row 958411 was truncated; it contained more data than there were input columns
+Warning	1262	Row 958840 was truncated; it contained more data than there were input columns
+Warning	1262	Row 961293 was truncated; it contained more data than there were input columns
+Warning	1262	Row 961324 was truncated; it contained more data than there were input columns
+Warning	1262	Row 961327 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 964298
+Warning	1262	Row 964298 was truncated; it contained more data than there were input columns
+Warning	1262	Row 979403 was truncated; it contained more data than there were input columns
+Warning	1262	Row 997361 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1002359
+Warning	1262	Row 1002359 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1002376
+Warning	1262	Row 1002376 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1024154 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1086692 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1117132
+Warning	1262	Row 1117132 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1169601 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1242234
+Warning	1262	Row 1242234 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1264578
+Warning	1262	Row 1264578 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1276903 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1278051 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1286512 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1387153 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1405059 was truncated; it contained more data than there were input columns
+Warning	1261	Row 1458521 doesn't contain data for all columns
+Warning	1262	Row 1466108 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1471890
+Warning	1262	Row 1471890 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1472839
+Warning	1262	Row 1472839 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1486274
+Warning	1262	Row 1486274 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1500408 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1506529 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1512019 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1534559
+Warning	1262	Row 1534559 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1560599
+Warning	1262	Row 1560599 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1571167
+Warning	1262	Row 1571167 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1571179
+Warning	1262	Row 1571179 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1606993 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1657006 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1674381 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1678773 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1683479 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1693343 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1693805 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1714140
+Warning	1262	Row 1714140 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1714734 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1714737 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1715488 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1724948 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1725306 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1726381 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1726723 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1726765 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1727565 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1751185 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1752456 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1787706
+Warning	1262	Row 1787706 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1800876 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1802656 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1819945
+Warning	1262	Row 1819945 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1820050 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1831497 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1831836 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1838357 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1862205
+Warning	1262	Row 1862205 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1862643
+Warning	1262	Row 1862643 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1864022
+Warning	1262	Row 1864022 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1879248 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1879261 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1884258 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1887224 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1888698 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1892812 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1893490 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1896266 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1896305 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1899104 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1917339 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1929646 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1940858 was truncated; it contained more data than there were input columns
+Warning	1262	Row 1941093 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 1962669
+Warning	1262	Row 1962669 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2009952 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2016650 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2017791 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2023845 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2070893 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2071370 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2078750
+Warning	1262	Row 2078750 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2106708 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2116581 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2135302
+Warning	1262	Row 2135302 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2143991 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2168275 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2180729 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2180733 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2195323 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2198882
+Warning	1262	Row 2198882 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2199738
+Warning	1262	Row 2199738 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2200376
+Warning	1262	Row 2200376 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2220813
+Warning	1262	Row 2220813 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2241024 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2249235 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2249844
+Warning	1262	Row 2249844 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2253259 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2253808 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2282926 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2283120 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2332517
+Warning	1262	Row 2332517 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2363475
+Warning	1262	Row 2363475 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2423052 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2431157 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2496321 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2502046 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2530712
+Warning	1262	Row 2530712 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2576973
+Warning	1262	Row 2576973 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2638748 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2684733 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2717371
+Warning	1262	Row 2717371 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2795666 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2796965 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2864887 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2885407
+Warning	1262	Row 2885407 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2933183
+Warning	1262	Row 2933183 was truncated; it contained more data than there were input columns
+Warning	1265	Data truncated for column 'synopsis' at row 2968631
+Warning	1262	Row 2968631 was truncated; it contained more data than there were input columns
+Warning	1262	Row 2998056 was truncated; it contained more data than there were input columns

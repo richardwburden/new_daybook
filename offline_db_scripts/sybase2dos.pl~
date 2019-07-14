@@ -1,0 +1,7 @@
+$/ = 'Xeol%X%X';
+while (<>)
+{
+    chomp;
+    $_ =~ s%\n%<line break>%g;
+    print $_."\n";
+}

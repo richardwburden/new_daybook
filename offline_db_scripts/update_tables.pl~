@@ -1,0 +1,139 @@
+use File::Spec;
+use Fcntl ':mode';
+use File::Copy;
+
+#process the input file/directory/glob pattern.
+my $newpath = "";
+my $dryRun = 0;
+my %keyfieldnames = ('msthld' => ['doc_id'],'master' => ['doc_id'],
+	      'dtl' => ['doc_id','dtl_seqno'],
+	      'dtlhld' => ['doc_id','dtl_seqno'],
+	      'class' => ['code'],'conv_stand' => ['code'],
+	      'stand' => ['code'],'system' => ['code'],
+	      'tophld' => ['code'],'topic' => ['code']);
+
+if (defined $ARGV[0]) {$newpath = $ARGV[0]} else {usage();}
+if (defined $ARGV[1]) {$oldpath = $ARGV[1]} else {usage();}
+if (defined $ARGV[2]) {$dryRun = 1}
+
+open (SQL, "+>update_daybook.sql") || die "can't update_daybook.sql for writing: $!"; 
+print SQL "use ndaybook;\n";
+
+my $diffpath = File::Spec->catdir($oldpath,"update");
+
+
+#Extract filenames from $newpath
+
+$newpath =~ s%/%\\%g;
+
+@newpath = File::Spec->splitpath($newpath);
+@newfiles = ();
+
+my $is_directory = 0;
+my $mode = undef;
+$mode = (stat($newpath))[2];
+if (defined $mode)
+{$is_directory = S_ISDIR($mode)}
+
+if ($is_directory)
+{
+    my $globpath = File::Spec->join($newpath,'*.*');
+    print "globpath: $globpath\n";
+    @newfiles = glob ($globpath);
+}
+elsif ($newpath[2] =~ /[\?\*]/)
+{
+    print "globpath: $newpath\n";
+    @newfiles = glob ($newpath);
+}
+
+else
+{@newfiles = ($newpath)}
+
+
+foreach $newfilepath (@newfiles)
+{
+    my $filename = (File::Spec->splitpath($newfilepath))[2];
+    my $table = lc(substr($filename,0,-4));
+    if ($table !~ /subset$/ and not defined $keyfieldnames{$table})
+    { 
+	warn "key field names not defined for table $table"; next
+    }
+    my $oldfilepath = File::Spec->join($oldpath,$filename);
+    my $difffilepath = File::Spec->join($diffpath,$filename);
+    my $cmd = "diff \"$oldfilepath\" \"$newfilepath\"  > \"$difffilepath\"";
+    if ($dryRun)
+    {
+	print "$cmd\n";
+	next;
+    }
+    else
+    {
+	system $cmd;
+	#{warn "$cmd failed: $!"; next}
+    }
+    if (!open (DIFFS,"$difffilepath"))
+	{warn "can't open $difffilepath for reading: $!"; next}
+    if (! open(TMP,"+>diff-temp.txt"))
+    {warn "can't open diff-temp.txt for writing: $!"; next}
+    my $new_rows = 0;
+    while (<DIFFS>)
+    {
+	chomp;
+	if ($_ !~ /^[<>]/) {next}
+	if (substr($_,0,1) eq '<') {deleteRow($table,$_)}
+	else 
+	{
+	    $_ =~ s/^> //;
+	    print TMP $_."\n";
+	    $new_rows = 1;
+	}
+    }
+    close TMP;
+    close DIFFS;
+    if (! $new_rows) 
+    {
+	#return value of 0 from system indicates success; non-zero indicates error
+	if (system "del \"$difffilepath\"")
+	{
+	    warn "can't delete $difffilepath: $!"
+	}
+	next
+    }
+    if (! move ('diff-temp.txt',$difffilepath))
+    {
+	warn "can't move diff-temp.txt to $difffilepath: $!"; next
+    }
+    $difffilepath =~ s%\\%/%g;
+    print SQL "load data local infile '$difffilepath' into table $table fields terminated by '\\t';\n";
+}
+close SQL;
+
+sub deleteRow
+{
+    my ($table,$row) = @_;
+    $row =~ s/^< //;
+    my @fields = split /\t/,$row;
+    my $sql = "delete from $table where ";
+    if ($table =~ /subset$/)
+    {
+	$sql .= "doc_id = \'$fields[0]\'";
+    }
+    else
+    {
+	$i = 0;
+	foreach $colname (@{$keyfieldnames{$table}})
+	{
+	    $sql .= "$colname = '$fields[$i]' and ";
+	    $i++;
+	}
+	$sql = substr($sql,0,-5);
+    }
+    $sql .= ";\n";
+    print SQL $sql;
+}
+sub usage
+{
+    print "perl $0 <newdir> <olddir> [dry run]\n";
+    exit;
+}
