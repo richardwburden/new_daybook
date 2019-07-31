@@ -2,6 +2,7 @@
 <head>
 <title>Find daybook headers and files</title>
 <style>
+body {font-size:16px; font-family:"Times New Roman", Times, serif;}
 .long_text, .long_text input {clear:both;width:100%; float:none;}
 .long_text {margin:5px}
 .short_text {float:left; margin:5px}
@@ -12,18 +13,60 @@
 .short_select select {height:130px}
 input.form-submit{clear:both; float:none;font-size:200%}
 input.form-checkbox{margin-right:20px}
+div.radio {clear:none; display:inline; margin:0 2px 0 4px; padding:2px 4px; font-weight:bold; background-color:black; color:white;}
+
 hr {clear:both; width:100%; float:none}
 textarea {width:100%}
 p {clear:both}
+div.header {clear:both;margin:1em 0;line-height:120%}
+div.link, div.data {clear:none; display:inline}
+div.logout {clear:none; display:inline; margin:0 0 0 12px;  font-weight:bold;}
+
 .headersHeader{text-align:center;font-weight:bold}
 h2 {text-align:center}
 </style>
+<script type="text/javascript">
+function logout() {
+    var xmlhttp;
+    if (window.XMLHttpRequest) {
+          xmlhttp = new XMLHttpRequest();
+    }
+    // code for IE
+    else if (window.ActiveXObject) {
+      xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    if (window.ActiveXObject) {
+      // IE clear HTTP Authentication
+      document.execCommand("ClearAuthenticationCache");
+      window.location.href='/cgi-bin/private/query_daybook.php';
+    } else {
+        xmlhttp.open("GET", '/site/200ok.html', true, "logout", "logout");
+        xmlhttp.send("");
+        xmlhttp.onreadystatechange = function() {
+            if (xmlhttp.readyState == 4) {window.location.href='/cgi-bin/private/query_daybook.php';}
+        }
+
+
+    }
+
+
+    return false;
+}
+</script>
 </head>
 <body>
 <h2>Find daybook headers and files</h2>
 <?php // print "Get lost</body></html>"; exit();
-$this_href = '/cgi-bin/query_daybook.php';
+$this_href = '/cgi-bin/private/query_daybook.php';
+$edit_script_href = '/cgi-bin/private/edit_daybook.php';
+$username="";
+$doc_edit_permissions = array();
+$edit = false;  //true if headers found which the user has permission to edit
 
+if (isset($_SERVER['PHP_AUTH_USER']))
+{$username=$_SERVER['PHP_AUTH_USER'];
+	print "<p>Hello $username</p>\n";
+}
 ini_set('max_execution_time', 300);
 
 function normalize ($string) {
@@ -136,11 +179,28 @@ function valid_max_rows($num)
 	else {return false;}
 }
 
-
+function calculate_edit_radio ($href)
+{
+	$doc_id = strtoupper (preg_replace('/.*\/(........)\.(...).*/','$1$2',$href));
+	$match_found = false;
+	$radio = ""; // doc_id = $doc_id; permissions: ".count($GLOBALS['doc_edit_permissions']." ");
+	foreach ($GLOBALS['doc_edit_permissions'] as $dep)
+	{
+		//$radio .= "dep = $dep ";
+		if (preg_match("/$dep/",$doc_id)) {$match_found = true; break;}
+	}
+	if ($match_found)
+	{
+		$GLOBALS['edit'] = true;
+	 	$radio = ' <div class="radio"><label class="radio" for="edit'.$doc_id.'">EDIT</label><input class="radio" type="radio" name="edit" id="edit'.$doc_id.'" value="'.$href.'" /></div> ';
+	}
+	return $radio;
+}
 
 function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 {
 	$headers = "";
+	$editable_headers = "";
 	// print "<p>process_query: count query: $sql_count</p>\n";
 	$count_result =  $mysqli->query($sql_count);
 	if (!$count_result) {
@@ -155,6 +215,10 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 	}
 	else // query succeeded
 	{
+		//calculate whether the document is in the permanent or temporary index
+		$idx = 'p';  
+		if (strpos($sql,'tempb') !== false) {$idx = 't';}
+		
 		print $count_msg.$result->num_rows.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
 
 		while ($data = $result->fetch_array())
@@ -170,11 +234,12 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 					$href = find_latest_version_of_daybook_file($id);
 					if ($href)
 					{
-						$datum = '<b><a href="'.$href.'" target="_blank">'.$value.'</a></b> ';
+						$edit_radio = calculate_edit_radio($href);
+						$datum = '<div class="link"><b><a href="'.$href.'" target="_blank">'.$value.'</a></b></div>'.$edit_radio.' <div class="data">';
 					}
 					else
 					{
-						$datum = '<b>'.$value.'</b>(file not found) ';
+						$datum = '<div class="link"><b>'.$value.'</b>(file not found) </div> <div class="data">';
 					}
 				}
 				else {$datum = $key.':'.$value.'; ';}
@@ -182,10 +247,18 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 				$row .= $datum;
 			}
 			$row = substr($row,0,-2); //remove final '; '
-			$headers .= '<p class="header">'.$row."</p>\n";
+			$row .= '</div>';
+			if ($edit_radio != '')
+			{
+				$editable_headers .= '<div class="header">'.$row."</div>\n";
+			}
+			else
+			{
+				$headers .= '<div class="header">'.$row."</div>\n";
+			}
 		}
 	} // end query succeeded
-	return $headers;
+	return $editable_headers.$headers;
 }
 
 
@@ -204,6 +277,20 @@ if ($mysqli->connect_errno) {
 if (!$mysqli->query("use ndaybook")) {
     printf("Errormessage: %s\n", $mysqli->error);
 }
+
+$user = strtoupper($_SERVER['PHP_AUTH_USER']);
+$result = $mysqli->query("select doc_id from doc_edit_permissions where user='$user'");
+$dep_wildcards = array('*','?');
+$dep_wildcard_repls = array('.*','.');
+while ($data = $result->fetch_object())
+{
+	$raw_pat = $data->doc_id;
+	$pat = str_replace($dep_wildcards,$dep_wildcard_repls,$raw_pat);
+	array_push($doc_edit_permissions,$pat);
+}
+/* print "<p>doc_edit_permissions:</p>";
+print_r ($doc_edit_permissions);
+print "<p>number of permissions: ".count($doc_edit_permissions)."</p>";  */
 
 $gpo_selector = "";
 $result = $mysqli->query("select distinct gpo from master order by gpo asc");
@@ -531,6 +618,7 @@ if ($tempidx == 'checked')
 {
 	print '<p class="query">Temporary index query: '.$sql2."</p>\n";
 }
+
 	if (strlen($invalid_fields) > 2)
  {$invalid_fields = substr($invalid_fields,0,-2); print "<p>invalid fields: $invalid_fields</p>\n";}
  
@@ -541,10 +629,25 @@ if ($first_rownum == 0 && $max_rows == 1000)
 if ($form_filled)
 {
 $headers = "";
+
 if ($permidx == 'checked')
-{$headers .= "<p class=\"headersHeader\">Permanent index:</p>\n".process_query($mysqli,$sql_count,$sql,$first_rownum);}
+{$query1_result = process_query($mysqli,$sql_count,$sql,$first_rownum);}
+
 if ($tempidx == 'checked')
-{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".process_query($mysqli,$sql2_count,$sql2,$first_rownum);}
+{$query2_result = process_query($mysqli,$sql2_count,$sql2,$first_rownum);}
+
+
+$no_edit_radio = "";
+if ($edit)
+{
+	$no_edit_radio = '<div class="radio"><label class="radio" for="noedit">DON\'T EDIT</label><input class="radio" type="radio" name="edit" id="noedit" value="noedit"></div>';
+}
+
+
+if ($permidx == 'checked')
+{$headers .= "<p class=\"headersHeader\">Permanent index:</p>\n".$no_edit_radio.$query1_result;}
+if ($tempidx == 'checked')
+{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".$no_edit_radio.$query2_result;}
 
 
 } // end if $form_filled == true
@@ -624,7 +727,7 @@ $title_saved = ""; */
 <img alt="clear" class="clear" src="/site/1x16000-clear.gif">	  
   <input type="submit" value="Submit" class="form-submit" />
   </form>
-	  
+	<div class="logout"><a href="#" onclick="logout();"><b>LOGOUT</b></a></div>  
  <?php print $headers; ?>
     
   

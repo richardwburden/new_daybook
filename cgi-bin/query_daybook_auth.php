@@ -1,7 +1,8 @@
 <html>
 <head>
-<title>Edit daybook file</title>
+<title>Find daybook headers and files</title>
 <style>
+body {font-size:16px; font-family:"Times New Roman", Times, serif;}
 .long_text, .long_text input {clear:both;width:100%; float:none;}
 .long_text {margin:5px}
 .short_text {float:left; margin:5px}
@@ -12,19 +13,23 @@
 .short_select select {height:130px}
 input.form-submit{clear:both; float:none;font-size:200%}
 input.form-checkbox{margin-right:20px}
+div.radio {clear:none; display:inline; margin:0 2px 0 4px; padding:2px 4px; font-weight:bold; background-color:black; color:white;}
+
 hr {clear:both; width:100%; float:none}
 textarea {width:100%}
 p {clear:both}
+div.header {clear:both;margin:1em 0;line-height:120%}
+div.link, div.data {clear:none; display:inline}
+div.logout {clear:none; display:inline; margin:0 0 0 12px;  font-weight:bold;}
+
 .headersHeader{text-align:center;font-weight:bold}
 h2 {text-align:center}
 </style>
+
 </head>
 <body>
 <h2>Find daybook headers and files</h2>
-<?php // print "Get lost</body></html>"; exit();
-$this_href = '/cgi-bin/query_daybook.php';
-
-ini_set('max_execution_time', 300);
+<?php
 
 function normalize ($string) {
   $table = array(
@@ -40,8 +45,52 @@ function normalize ($string) {
    
   return strtr($string, $table);
 }
+function valid_issue_date (&$issue_date)
+{
+	// replace wildcard '*' with the MariaDB equivalent, '%'
+	$issue_date = str_replace('*','%',$issue_date);
+	if (preg_match('/^[\d%?]*%[\d%?]*$/',$issue_date)) 
+	{
+		// replace wildcard '?' with the MariaDB equivalent, '_'
+		$issue_date = str_replace('?','_',$issue_date);
+		return true;
+	}
+	$dt = new DateTime();
+	$current_year = $dt->format('yy');
+	$short_months = array('04','06','09','11');
+	$valid_date = false;
+	if ($issue_date != '' && preg_match('/\d\d\d\d\d\d/',$issue_date)) 
+	{
+		$year = substr($issue_date,0,2);
+		$month = substr($issue_date,2,2);
+		$day = substr($issue_date,4,2);
+		if ($year > 80 && $year <= $current_year && $month > 0 
+		&& $month < 13 && $day > 0 && $day < 32 && 
+		!($day == 31 && in_array($month, $short_months)) && 
+		!($day > 29 && $month == '02')) {$valid_date = true;}
+		if (($year % 4 == 0) && $month == '02' && day == 29) {$valid_date = true;}
+	}	
+	return $valid_date;
+}
 
-
+function valid_doc_id (&$id)
+{
+	if ($id != '' && preg_match('/[89abcd?][?\d][012345?][\d?][1234567?][a-z_?]{3}[?\d]{3}/i',$id)) 
+	{
+		// no week 00; first week is 01
+		if (substr($id,2,2 == '00')) {return false;}
+		// maximum week is 53
+		if ((substr($id,2,1) == '5') && (substr($id,3,1) > '3'))
+		{return false;}
+		//escape underscores, which are considered single-character wildcards in MariaDB like clauses.
+		$id = str_replace('_','\\_',$id);
+		//replace '?' with '_' because MariaDB does not consider '?' to be a single-character wildcard.
+		$id = str_replace('?','_',$id);
+		$id = strtoupper($id);
+		return true;
+	}	
+	return false;
+}
 
 function parray ($arr)
 {
@@ -55,26 +104,171 @@ function parray ($arr)
 	return $output;
 }
 
-
-
-function process_query ($mysqli,$sql)
+function find_latest_version_of_daybook_file ($id)
 {
+	$id = strtolower($id);
+	$rootdir = 'E:\as\daybook_files\\';
+	$year = substr($id,0,2);
+	$day = substr($id,2,3);
+	$username = substr($id,5,3);
+	$docno = substr($id,8);
+	$dirpath = $rootdir.'y'.$year.'\\'.$day;
+	// suppress directory not found warnings
+	error_reporting(E_ERROR | E_PARSE);
+	if (!$d = dir($dirpath)) {return false;}
+	else
+	{
+		$latest_version = 0;
+		while (false !== ($e = $d->read())) {
+   		if (($e==".")||($e=="..")) continue;
+		$e = strtolower($e);
+		if (substr($e,0,12) != $year.$day.$username.'.'.$docno) continue;
+		$version = substr($e,13,-4);
+		if ($version > $latest_version) {$latest_version = $version;}
+		}
+		if ($latest_version > 0) {return '/daybook_files/y'.$year.'/'.$day.'/'.$year.$day.$username.'.'.$docno.'.'.$latest_version.'.txt';}
+		else {return false;}
+	}
+}
+function valid_first_rownum($num)
+{
+	if (is_numeric($num) && $num >= 0 && is_int($num + 0)) {return true;}
+	else {return false;}
+}
+function valid_max_rows($num)
+{
+	if (is_numeric($num) && $num >= 1 && $num <= 1000 && is_int($num + 0)) {return true;}
+	else {return false;}
+}
+
+function calculate_edit_radio ($href)
+{
+	$doc_id = strtoupper (preg_replace('/.*\/(........)\.(...).*/','$1$2',$href));
+	$match_found = false;
+	$radio = ""; // doc_id = $doc_id; permissions: ".count($GLOBALS['doc_edit_permissions']." ");
+	foreach ($GLOBALS['doc_edit_permissions'] as $dep)
+	{
+		//$radio .= "dep = $dep ";
+		if (preg_match("/$dep/",$doc_id)) {$match_found = true; break;}
+	}
+	if ($match_found)
+	{
+		$GLOBALS['edit'] = true;
+	 	$radio = ' <div class="radio"><label class="radio" for="edit'.$doc_id.'">EDIT</label><input class="radio" type="radio" name="edit" id="edit'.$doc_id.'" value="'.$href.'" /></div> ';
+	}
+	return $radio;
+}
+
+function process_query ($mysqli,$sql_count,$sql,$first_rownum)
+{
+	$headers = "";
+	$editable_headers = "";
+	// print "<p>process_query: count query: $sql_count</p>\n";
+	$count_result =  $mysqli->query($sql_count);
+	if (!$count_result) {
+    	printf("Query failed. Errormessage: %s\n", $mysqli->error);
+	}
+	$row = $count_result->fetch_row();
+	$count_msg = "<p>$row[0] headers found; ";
+
 	$result = $mysqli->query($sql);
 	if (!$result) {
     	printf("Query failed. Errormessage: %s\n", $mysqli->error);
 	}
 	else // query succeeded
 	{
-		print("Database updated\n");
+		//calculate whether the document is in the permanent or temporary index
+		$idx = 'p';  
+		if (strpos($sql,'tempb') !== false) {$idx = 't';}
+		
+		print $count_msg.$result->num_rows.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
+
+		while ($data = $result->fetch_array())
+		{
+			$row = "";
+			$i = 0;
+			foreach ($data as $key => $value)
+			{
+				if (is_int($key)) {continue;}
+				if ($key == 'doc_id')
+				{
+					$id = strtolower($value);
+					$href = find_latest_version_of_daybook_file($id);
+					if ($href)
+					{
+						$edit_radio = calculate_edit_radio($href);
+						$datum = '<div class="link"><b><a href="'.$href.'" target="_blank">'.$value.'</a></b></div>'.$edit_radio.' <div class="data">';
+					}
+					else
+					{
+						$datum = '<div class="link"><b>'.$value.'</b>(file not found) </div> <div class="data">';
+					}
+				}
+				else {$datum = $key.':'.$value.'; ';}
+		
+				$row .= $datum;
+			}
+			$row = substr($row,0,-2); //remove final '; '
+			$row .= '</div>';
+			if ($edit_radio != '')
+			{
+				$editable_headers .= '<div class="header">'.$row."</div>\n";
+			}
+			else
+			{
+				$headers .= '<div class="header">'.$row."</div>\n";
+			}
+		}
 	} // end query succeeded
+	return $editable_headers.$headers;
 }
 
 
 
 
+// The full url to this file is required for 
+// the Logout function
+$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth.php';
+ 
+// Status flags:
+$LoginSuccessful    = false;
+$Logout             = false;
+ 
+// Check username and password:
+if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
+ 
+    $usr = $_SERVER['PHP_AUTH_USER'];
+    $pwd = $_SERVER['PHP_AUTH_PW'];
+ 
+    // Does the user want to login or logout?
+    if ($usr == 'RWB' && $pwd == 'gRinialei'){
+        $LoginSuccessful = true;
+    }
+    else if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
+        // reset is a special login for logout ;-)
+        $Logout = true;
+    }
+}
+ 
+ 
+if ($Logout){
+ 
+    // The user clicked on "Logout"
+    print 'You are now logged out.';
+    print '<br/>';
+    print '<a href="https://'.$CurrentUrl.'">Login again</a>';
+}
+else if ($LoginSuccessful){
 
 
-$mysqli = new mysqli("localhost", $username, "", "");
+$edit_script_href = '62u-wi7-rwb/cgi-bin/edit_daybook.php';
+
+$doc_edit_permissions = array();
+$edit = false;  //true if headers found which the user has permission to edit
+
+ini_set('max_execution_time', 300);
+
+$mysqli = new mysqli("localhost", "guest", "", "");
 
 /* check connection */
 if ($mysqli->connect_errno) {
@@ -85,6 +279,21 @@ if ($mysqli->connect_errno) {
 if (!$mysqli->query("use ndaybook")) {
     printf("Errormessage: %s\n", $mysqli->error);
 }
+
+$user = strtoupper($_SERVER['PHP_AUTH_USER']);
+
+
+print '<p>Hello '.$user.'</p>'."\n";
+$result = $mysqli->query("select doc_id from doc_edit_permissions where user='$user'");
+$dep_wildcards = array('*','?');
+$dep_wildcard_repls = array('.*','.');
+while ($data = $result->fetch_object())
+{
+	$raw_pat = $data->doc_id;
+	$pat = str_replace($dep_wildcards,$dep_wildcard_repls,$raw_pat);
+	array_push($doc_edit_permissions,$pat);
+}
+
 
 $gpo_selector = "";
 $result = $mysqli->query("select distinct gpo from master order by gpo asc");
@@ -194,11 +403,6 @@ $subjt_selector .= "</select>\n";
 
 
 
-
-
-
-
-
 $invalid_fields = "";
 $doc_id_saved = "";
 $issue_date_saved = "";
@@ -206,13 +410,38 @@ $title_saved = "";
 $form_filled = false;
 $permidx = '';
 $tempidx = '';
+$sql = 'select * from headerb where ';
+
+if (isset ($_REQUEST['permidx']))
+{
+	$permidx = 'checked';
+}
+
+if (isset ($_REQUEST['tempidx']))
+{
+	$tempidx = 'checked';
+}
+//At least one box must be checked.  The permanent index will be checked by default if the temporary index is not checked.
+if ($tempidx == '')
+{
+	$permidx = 'checked';
+}
+//Because the temporary index contains only today's items, there is no need to narrow the query further, so the form is considered to be filled if the temporary index alone is checked
+if ($permidx == '' && $tempidx == 'checked')
+{$form_filled = true;}
 
 
-$sql = 'update  from headerb where ';
 
 
-
-
+if (isset ($_REQUEST['doc_id']))
+{
+	$doc_id_saved = $_REQUEST['doc_id'];
+	$doc_id = trim($doc_id_saved);
+	if (valid_doc_id($doc_id))
+	{$sql .= 'doc_id like "'.$doc_id.'" and '; 
+	$form_filled = true;}
+	else if ($doc_id != ''){$invalid_fields .= "doc_id: $doc_id_saved, ";}
+}
 if (isset ($_REQUEST['doc_class']))
 {
 	$form_filled = true;
@@ -387,6 +616,7 @@ if ($tempidx == 'checked')
 {
 	print '<p class="query">Temporary index query: '.$sql2."</p>\n";
 }
+
 	if (strlen($invalid_fields) > 2)
  {$invalid_fields = substr($invalid_fields,0,-2); print "<p>invalid fields: $invalid_fields</p>\n";}
  
@@ -397,10 +627,25 @@ if ($first_rownum == 0 && $max_rows == 1000)
 if ($form_filled)
 {
 $headers = "";
+
 if ($permidx == 'checked')
-{$headers .= "<p class=\"headersHeader\">Permanent index:</p>\n".process_query($mysqli,$sql_count,$sql,$first_rownum);}
+{$query1_result = process_query($mysqli,$sql_count,$sql,$first_rownum);}
+
 if ($tempidx == 'checked')
-{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".process_query($mysqli,$sql2_count,$sql2,$first_rownum);}
+{$query2_result = process_query($mysqli,$sql2_count,$sql2,$first_rownum);}
+
+
+$no_edit_radio = "";
+if ($edit)
+{
+	$no_edit_radio = '<div class="radio"><label class="radio" for="noedit">DON\'T EDIT</label><input class="radio" type="radio" name="edit" id="noedit" value="noedit"></div>';
+}
+
+
+if ($permidx == 'checked')
+{$headers .= "<p class=\"headersHeader\">Permanent index:</p>\n".$no_edit_radio.$query1_result;}
+if ($tempidx == 'checked')
+{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".$no_edit_radio.$query2_result;}
 
 
 } // end if $form_filled == true
@@ -409,23 +654,20 @@ else // form not filled
 print "<p>Form not filled; query too general. Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
 
 $headers = "";
-/*$doc_id_saved = "";
-$issue_date_saved = "";
-$title_saved = ""; */
 }
-?>
-<div style="text-align:left">
-  <form action="<?php print $this_href; ?>" method="POST">
+
+print '<div style="text-align:left">
+  <form action="https://'.$CurrentUrl.'" method="POST">
   
    <div class="short_text">
-  <label for="first_rownum">headers to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="<?php print $first_rownum; ?>" />
+  <label for="first_rownum">headers to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="'.$first_rownum.'" />
   </div>
   <div class="short_text">
-  <label for="max_rows"> max. number of headers (min. 1, max. 1000)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="<?php print $max_rows; ?>" />
+  <label for="max_rows"> max. number of headers (min. 1, max. 1000)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="'.$max_rows.'" />
   </div>
   <div class="short_text">
-  <label for="permidx">Permanent index</label> <input type="checkbox" class="form-checkbox"  name="permidx" id="permidx" <?php print $permidx; ?> />
-   <label for="tempidx">Temporary index</label> <input type="checkbox" class="form-checkbox"  name="tempidx" id="tempidx" <?php print $tempidx; ?> />
+  <label for="permidx">Permanent index</label> <input type="checkbox" class="form-checkbox"  name="permidx" id="permidx" '.$permidx.' />
+   <label for="tempidx">Temporary index</label> <input type="checkbox" class="form-checkbox"  name="tempidx" id="tempidx" '.$tempidx.' />
  
   </div>
   <hr />
@@ -433,58 +675,68 @@ $title_saved = ""; */
   </p>
   
   <div class="short_text">
-  <label for="doc_id">doc_id</label><br /><input type="text" class="form-text" length="12" name="doc_id" id="doc_id" value="<?php print $doc_id_saved; ?>" />
+  <label for="doc_id">doc_id</label><br /><input type="text" class="form-text" length="12" name="doc_id" id="doc_id" value="'.$doc_id_saved.'" />
   </div>
   <div class="short_text">
-   <label for="issue_date">issue_date</label><br /><input type="text" class="form-text"  name="issue_date" id="issue_date" length="6" value="<?php print $issue_date_saved; ?>" />
+   <label for="issue_date">issue_date</label><br /><input type="text" class="form-text"  name="issue_date" id="issue_date" length="6" value="'.$issue_date_saved.'" />
   </div>
  <div class="long_text">
-  <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="<?php print $title_saved; ?>" />
+  <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="'.$title_saved.'" />
   </div>
  
-  <div class="long_select">
- <?php print $class_selector; ?>
- </div>
+  <div class="long_select">'.$class_selector.'</div>
  
-  <div class="long_select">
-   <?php print $system_selector; ?>
-</div>
-  <div class="long_select">
-  <?php print $topic_selector; ?>
-</div>
-  <div class="long_select">
-  <?php print $stand_selector; ?>
-</div>
-  <div class="long_select">
-  <?php print $subjt_selector; ?>
-</div>
+  <div class="long_select">'.$system_selector.'</div>
+  <div class="long_select">'.$topic_selector.'</div>
+  <div class="long_select">'.$stand_selector.'</div>
+  <div class="long_select">'.$subjt_selector.'</div>
  
- <div class="short_select">
-  <?php print $gpo_selector; ?>
- </div>
+ <div class="short_select">'.$gpo_selector.'</div>
  
- <div class="short_select">
-     <?php print $security_selector; ?>
-</div>
-<!-- 
-<div class="short_select">
-<label for="note0">note</label><br />
- <input type="radio" name="note" id="note0" value="0" class="form_radio" />
-  <label class="option" for="note0">0</label>
-    <input type="radio" name="note" id="note1" value="1" class="form_radio" />
-	  <label class="option" for="note1">1</label>
-	  <input type="radio" name="note" id="note2" value="2" class="form_radio" />
-	  <label class="option" for="note2">ignore</label>
-</div>
--->
+ <div class="short_select">'.$security_selector.'</div>
+
 <img alt="clear" class="clear" src="/site/1x16000-clear.gif">	  
   <input type="submit" value="Submit" class="form-submit" />
-  </form>
-	  
- <?php print $headers; ?>
-    
+  </form>';
+
+ // This will not clear the authentication cache, but
+ // it will replace the "real" login data with bogus data
+  print '<a href="https://reset:reset@'. $CurrentUrl .'?Logout=1"><b>LOGOUT</b></a></div>';
   
-  </div>
+  print $headers;
+}
+else {
+ 
+    /* 
+    ** The user gets here if:
+    ** 
+    ** 1. The user entered incorrect login data (three times)
+    **     --> User will see the error message from below
+    **
+    ** 2. Or the user requested the page for the first time
+    **     --> Then the 401 headers apply and the "login box" will
+    **         be shown
+    */
+ 
+    // The text inside the realm section will be visible for the 
+    // user in the login box
+    header('WWW-Authenticate: Basic realm="Top-secret area"');
+    header('HTTP/1.0 401 Unauthorized');
+ 
+    // Error message
+    print "Sorry, login failed!\n";
+    print "<br/>";
+    print '<a href="https://' . $CurrentUrl . '">Try again</a>';
+ 
+}
+
+
+
+
+
+?>    
+  
+  
 </body>
 </html>
 

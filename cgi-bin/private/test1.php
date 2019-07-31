@@ -7,6 +7,9 @@
 
 <body>
 <p>Hello this is a test<br />
-<?php print $_SERVER['REQUEST_SCHEME']; ?> </p>
+<?php print_r ($_SERVER); 
+print_r ($_COOKIE);
+
+?> </p>
 </body>
 </html>
