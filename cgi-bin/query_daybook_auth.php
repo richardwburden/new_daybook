@@ -223,42 +223,8 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 	return $editable_headers.$headers;
 }
 
-
-
-
-// The full url to this file is required for 
-// the Logout function
-$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth.php';
- 
-// Status flags:
-$LoginSuccessful    = false;
-$Logout             = false;
- 
-// Check username and password:
-if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
- 
-    $usr = $_SERVER['PHP_AUTH_USER'];
-    $pwd = $_SERVER['PHP_AUTH_PW'];
- 
-    // Does the user want to login or logout?
-    if ($usr == 'RWB' && $pwd == 'gRinialei'){
-        $LoginSuccessful = true;
-    }
-    else if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
-        // reset is a special login for logout ;-)
-        $Logout = true;
-    }
-}
- 
- 
-if ($Logout){
- 
-    // The user clicked on "Logout"
-    print 'You are now logged out.';
-    print '<br/>';
-    print '<a href="https://'.$CurrentUrl.'">Login again</a>';
-}
-else if ($LoginSuccessful){
+function process_form()
+{
 
 
 $edit_script_href = '62u-wi7-rwb/cgi-bin/edit_daybook.php';
@@ -657,7 +623,7 @@ $headers = "";
 }
 
 print '<div style="text-align:left">
-  <form action="https://'.$CurrentUrl.'" method="POST">
+  <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
   
    <div class="short_text">
   <label for="first_rownum">headers to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="'.$first_rownum.'" />
@@ -701,9 +667,82 @@ print '<div style="text-align:left">
 
  // This will not clear the authentication cache, but
  // it will replace the "real" login data with bogus data
-  print '<a href="https://reset:reset@'. $CurrentUrl .'?Logout=1"><b>LOGOUT</b></a></div>';
+  print '<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a></div>';
   
   print $headers;
+
+}
+
+
+// The full url to this file is required for 
+// the Logout function
+$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth.php';
+ 
+// Status flags:
+$LoginSuccessful    = false;
+$Logout             = false;
+ 
+// Check username and password:
+if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
+	$usr = $_SERVER['PHP_AUTH_USER'];
+	$pwd = $_SERVER['PHP_AUTH_PW'];
+
+ 	if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
+        // reset is a special login for logout ;-)
+        $Logout = true;
+    }
+	else
+	{
+		ini_set('max_execution_time', 300);
+
+		$mysqli = new mysqli("localhost", "root", "UbetrBabl2bkitup");
+	/* check connection */
+		if ($mysqli->connect_errno) {
+    		printf("Connect failed: %s\n", $mysqli->connect_error);
+	    	exit();
+		}
+
+		$usrquery = "select password from mysql.user where user='$usr'";
+	
+		print("<p>authentication query: $usrquery</p>\n");
+		$usrresult = $mysqli->query($usrquery);
+		if (!$usrresult) {
+    		printf("Query failed. Errormessage: %s\n", $mysqli->error);
+		}
+		else 
+		{
+			$row = $usrresult->fetch_row();
+			if ($row !== NULL)
+			{
+				$dbpwd = $row[0];
+				$hashquery = "select sha1(unhex(sha1('$pwd')))";
+				$hashresult = $mysqli->query($hashquery);
+				$row = $hashresult->fetch_row();
+				$pwd = strtoupper('*'.$row[0]);
+				if ($pwd == $dbpwd)
+				{
+    	    		$LoginSuccessful = true;
+    			}
+				else  //for debugging; remove!
+				{
+					print("<p>Password hash is $dbpwd; the hash of what you entered is $pwd</p>\n");
+				
+				}
+			}
+		}
+	}
+} 
+ 
+if ($Logout){
+ 
+    // The user clicked on "Logout"
+    print 'You are now logged out.';
+    print '<br/>';
+    print '<a href="https://'.$CurrentUrl.'">Login again</a>';
+}
+else if ($LoginSuccessful){
+
+process_form();
 }
 else {
  
@@ -730,16 +769,6 @@ else {
  
 }
 
-
-
-
-
 ?>    
-  
-  
 </body>
 </html>
-
-
-
-
