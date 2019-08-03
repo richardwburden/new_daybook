@@ -229,8 +229,10 @@ function process_form()
 
 $edit_script_href = '62u-wi7-rwb/cgi-bin/edit_daybook.php';
 
-$doc_edit_permissions = array();
-$edit = false;  //true if headers found which the user has permission to edit
+
+
+$GLOBALS['doc_edit_permissions'] = array();
+$GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
 
 ini_set('max_execution_time', 300);
 
@@ -249,17 +251,20 @@ if (!$mysqli->query("use ndaybook")) {
 $user = strtoupper($_SERVER['PHP_AUTH_USER']);
 
 
-print '<p>Hello '.$user.'</p>'."\n";
+print '<p>Hello '.$user.'. '.'<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a> ';
 $result = $mysqli->query("select doc_id from doc_edit_permissions where user='$user'");
 $dep_wildcards = array('*','?');
 $dep_wildcard_repls = array('.*','.');
+$msg = "You may edit documents with ids matching patterns: ";
 while ($data = $result->fetch_object())
 {
 	$raw_pat = $data->doc_id;
+	$msg .= "'$raw_pat', ";
 	$pat = str_replace($dep_wildcards,$dep_wildcard_repls,$raw_pat);
-	array_push($doc_edit_permissions,$pat);
+	array_push($GLOBALS['doc_edit_permissions'],$pat);
 }
-
+$msg = substr($msg,0,-2);
+print ($msg."</p>\n");
 
 $gpo_selector = "";
 $result = $mysqli->query("select distinct gpo from master order by gpo asc");
@@ -602,7 +607,7 @@ if ($tempidx == 'checked')
 
 
 $no_edit_radio = "";
-if ($edit)
+if ($GLOBALS['edit'])
 {
 	$no_edit_radio = '<div class="radio"><label class="radio" for="noedit">DON\'T EDIT</label><input class="radio" type="radio" name="edit" id="noedit" value="noedit"></div>';
 }
@@ -684,7 +689,7 @@ $Logout             = false;
  
 // Check username and password:
 if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
-	$usr = $_SERVER['PHP_AUTH_USER'];
+	$usr = strtolower ($_SERVER['PHP_AUTH_USER']);
 	$pwd = $_SERVER['PHP_AUTH_PW'];
 
  	if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
@@ -718,6 +723,7 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 				$hashquery = "select sha1(unhex(sha1('$pwd')))";
 				$hashresult = $mysqli->query($hashquery);
 				$row = $hashresult->fetch_row();
+				$mysqli->close();
 				$pwd = strtoupper('*'.$row[0]);
 				if ($pwd == $dbpwd)
 				{
