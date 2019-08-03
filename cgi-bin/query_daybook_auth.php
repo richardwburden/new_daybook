@@ -255,16 +255,21 @@ print '<p>Hello '.$user.'. '.'<a href="https://reset:reset@'. $GLOBALS['CurrentU
 $result = $mysqli->query("select doc_id from doc_edit_permissions where user='$user'");
 $dep_wildcards = array('*','?');
 $dep_wildcard_repls = array('.*','.');
-$msg = "You may edit documents with ids matching patterns: ";
+$patterns = "";
 while ($data = $result->fetch_object())
 {
 	$raw_pat = $data->doc_id;
-	$msg .= "'$raw_pat', ";
+	$patterns .= "'$raw_pat', ";
 	$pat = str_replace($dep_wildcards,$dep_wildcard_repls,$raw_pat);
 	array_push($GLOBALS['doc_edit_permissions'],$pat);
 }
-$msg = substr($msg,0,-2);
-print ($msg."</p>\n");
+if ($patterns == '')
+{print "You may not edit anything.</p>\n";}
+else
+{
+	$patterns = substr($patterns,0,-2);
+	print "You may edit documents with ids matching patterns: $patterns</p>\n";
+}
 
 $gpo_selector = "";
 $result = $mysqli->query("select distinct gpo from master order by gpo asc");
@@ -581,17 +586,17 @@ $sql2 = str_replace('select * from tempb where 0','select * from tempb where 1',
 
 if ($permidx == 'checked')
 {
-	print '<p class="query">Permanent index query: '.$sql."</p>\n";
+	print '<p class="query">Daybook permanent index query: '.$sql."</p>\n";
 }
 if ($tempidx == 'checked')
 {
-	print '<p class="query">Temporary index query: '.$sql2."</p>\n";
+	print '<p class="query">Daybook temporary index query: '.$sql2."</p>\n";
 }
 
 	if (strlen($invalid_fields) > 2)
  {$invalid_fields = substr($invalid_fields,0,-2); print "<p>invalid fields: $invalid_fields</p>\n";}
  
-if ($first_rownum == 0 && $max_rows == 1000)
+if ($first_rownum == 0 && $max_rows == 1000 && $invalid_fields == "")
 {print "<p>By default, the first 1000 headers found will be shown.  If a different range is desired, enter the number of headers to be skipped before the 1000 that will be shown, if they exist, or enter a smaller \"max. number of headers\".</p>\n";
 } 
 
@@ -622,9 +627,16 @@ if ($tempidx == 'checked')
 } // end if $form_filled == true
 else // form not filled
 {
-print "<p>Form not filled; query too general. Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
+	if ($invalid_fields != "")
+	{
+		print "<p>Daybook query not submitted due to invalid fields</p>\n";
+	}
+	else
+	{
+		print "<p>Form not filled; query too general. Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
+	}
 
-$headers = "";
+	$headers = "";
 }
 
 print '<div style="text-align:left">
@@ -709,7 +721,7 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 
 		$usrquery = "select password from mysql.user where user='$usr'";
 	
-		print("<p>authentication query: $usrquery</p>\n");
+		// print("<p>authentication query: $usrquery</p>\n");
 		$usrresult = $mysqli->query($usrquery);
 		if (!$usrresult) {
     		printf("Query failed. Errormessage: %s\n", $mysqli->error);
@@ -720,20 +732,23 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 			if ($row !== NULL)
 			{
 				$dbpwd = $row[0];
-				$hashquery = "select sha1(unhex(sha1('$pwd')))";
-				$hashresult = $mysqli->query($hashquery);
-				$row = $hashresult->fetch_row();
-				$mysqli->close();
-				$pwd = strtoupper('*'.$row[0]);
+				if ($dbpwd != '')
+				{
+					$hashquery = "select sha1(unhex(sha1('$pwd')))";
+					$hashresult = $mysqli->query($hashquery);
+					$row = $hashresult->fetch_row();
+					$mysqli->close();
+					$pwd = strtoupper('*'.$row[0]);
+				}
 				if ($pwd == $dbpwd)
 				{
     	    		$LoginSuccessful = true;
     			}
-				else  //for debugging; remove!
+				/* else  //for debugging; remove!
 				{
 					print("<p>Password hash is $dbpwd; the hash of what you entered is $pwd</p>\n");
 				
-				}
+				} */
 			}
 		}
 	}
