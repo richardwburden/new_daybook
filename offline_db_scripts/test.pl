@@ -1,3 +1,10 @@
-$retval = system "del a.txt";
+$str = $ARGV[0];
 
-print $retval;
+if ($str =~ /2...4/)
+{
+    print "$str matches /2...4/\n";
+}
+else
+{
+    print "$str does not match /2...4/\n";
+}
