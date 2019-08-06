@@ -11,8 +11,12 @@ my %versions = ();
 #list of filenames for the current version of the current doc_id
 my @version_filenames = ();
 #previous doc_id and version encountered in the loop.
-$pdoc_id = "";
-$pversion = "";
+my $doc_id = "";
+my $pdoc_id = "";
+my $version = "";
+my $pversion = "";
+my @stat = ();
+my $mtime = 0;
 
 #process the input file/directory/glob pattern.
 
@@ -36,53 +40,49 @@ sub wanted
 	next
     }
     if ($_ !~ /^([a-z0-9][0-9][0-9][0-9][0-9][a-z][a-z][a-z_]\.[0-9][0-9][0-9])\.([0-9]+)/i) {next}
-    my $doc_id = $1;
-    my $version = $2;
+    $doc_id = $1;
+    $version = $2;
     
     if ($pdoc_id ne "" and $doc_id ne $pdoc_id)
     {
 	#we've reached a new doc_id
-	if (keys (%versions)  > 1)
-	{
-	    checkVersions($pdoc_id);
-	}
+	$correctfn = resolveVersion("$pdoc_id.$pversion");
+	#add the previous version number to the hash for this doc_id
+	@stat = stat($correctfn);
+	$mtime = $stat[9];
+	$versions{$pversion} = $mtime;
+	checkVersions($pdoc_id);
+	
 	#reset version-mtime hash, list of filenames for the current version, and previous version, and copy current doc_id to previous doc_id
 	%versions = ();
 	@version_filenames = ();
-	$pdoc_id = $doc_id;
-	$pversion = "";
     }
     elsif ($pversion ne "" and $version ne $pversion)
     {
 	#we've reached a new version
-	#start by assuming that the first filename for the previous version is the newest file for that version and has the correct filename.
-	my $correctfn = $version_filenames[0];
-	#if there is more than one filename for this version, we must find which is the newest, delete the others, and give the newest the correct filename for this version.
-	if (@version_filenames > 1)
-	{
-	    $correctfn = resolveVersion($doc_id.$pversion);
-	}
+	$correctfn = resolveVersion("$doc_id.$pversion");
+	
 	#reset list of filenames for the previous version
 	@version_filenames = ();
 
 
 	#add the previous version number to the hash for this doc_id
-	my @stat = stat($correctfn);
-	my $mtime = $stat[9];
+	@stat = stat($correctfn);
+	$mtime = $stat[9];
 	$versions{$pversion} = $mtime;
 
         #copy current version to previous version (we copy the version number, NOT the contents of the file)
-	$pversion = $version;
     }
     push @version_filenames, $_;
-    
+    $pdoc_id = $doc_id;
+    $pversion = $version;
 }
 #process last item in loop
-if (@version_filenames > 1)
-{
-    resolveVersion($doc_id.$pversion);
-}
-
+$correctfn = resolveVersion("$pdoc_id.$pversion");
+@stat = stat($correctfn);
+$mtime = $stat[9];
+$versions{$pversion} = $mtime;
+checkVersions($pdoc_id);
 
 
 sub checkVersions
@@ -117,7 +117,11 @@ sub resolveVersion
     {
 	my @stat = stat($fn);
 	my $mtime = $stat[9];
-	if ($mtime > $maxMtime) {$vfn = $fn}
+	if ($mtime > $maxMtime) 
+	{
+	    $vfn = $fn;
+	    $maxMtime = $mtime;
+	}
     }
     foreach $fn (@version_filenames)
     {
@@ -130,7 +134,10 @@ sub resolveVersion
     }
     if ($vfn ne $correctfn)
     {
-        print ("renaming '$fn' as '$correctfn'\n");
+        print ("renaming '$vfn' as '$correctfn'\n");
 	#move ($vfn, $correctfn);
     }
+    #for debugging purposes, don't change the filename yet
+    return $vfn;
+    #return $correctfn;
 }
