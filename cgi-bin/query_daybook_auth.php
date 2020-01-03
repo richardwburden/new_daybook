@@ -225,16 +225,20 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 
 function process_form()
 {
-
-
-$edit_script_href = '62u-wi7-rwb/cgi-bin/edit_daybook.php';
-
-
-
+/* if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != 'noedit'))
+{
+	process_edit_form()
+}
+else if (isset ($_REQUEST['newtext']))
+{
+	process_edit_submit()
+}
+*/
 $GLOBALS['doc_edit_permissions'] = array();
 $GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
 
 ini_set('max_execution_time', 300);
+
 
 $mysqli = new mysqli("localhost", "guest", "", "");
 
@@ -376,7 +380,6 @@ while ($data = $result->fetch_object())
 }
 $subjt_selector .= "</select>\n";
 }
-
 
 
 $invalid_fields = "";
@@ -678,7 +681,8 @@ print '<div style="text-align:left">
  
  <div class="short_select">'.$security_selector.'</div>
 
-<img alt="clear" class="clear" src="/site/1x16000-clear.gif">	  
+<img alt="clear" class="clear" src="/site/1x16000-clear.gif">
+  <input type="hidden" name="SessionEstablished" />	   
   <input type="submit" value="Submit" class="form-submit" />
   </form>';
 
@@ -687,7 +691,6 @@ print '<div style="text-align:left">
   print '<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a></div>';
   
   print $headers;
-
 }
 
 

@@ -43,7 +43,7 @@ sub wanted
 	print STDERR "Entering directory $File::Find::name\n"; 
 	next
     }
-    if ($_ !~ /^([a-z0-9][0-9][0-9][0-9][0-9]...\.[0-9][0-9][0-9])\.([0-9]+)/i) 
+    if ($_ !~ /^([a-z0-9][0-9][0-9][0-9][0-9]...\....)\.([0-9]+)/i) 
     {
 	print "Skipping file $File::Find::name\n"; 
 	next
@@ -131,7 +131,7 @@ sub checkVersions
 	{
 	    my $filename = "$doc_id.$version.txt";
 	    print ("VMS version $filename out of order; deleting\n");
-	   # unlink $filename;
+	    unlink $filename;
 	}
 	else
 	{
@@ -168,15 +168,15 @@ sub resolveVersion
 	{
 	    #remove all but the newest file with same version number
 	    print ("deleting $fn\n");
-	    #unlink $fn;
+	    unlink $fn;
 	}
     }
     if ($vfn ne $correctfn)
     {
         print ("renaming '$vfn' as '$correctfn'\n");
-	#move ($vfn, $correctfn);
+	move ($vfn, $correctfn);
     }
     #for debugging purposes, don't change the filename yet
-    return $vfn;
-    #return $correctfn;
+    #return $vfn;
+    return $correctfn;
 }
