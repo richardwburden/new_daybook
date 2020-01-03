@@ -80,7 +80,7 @@ function valid_doc_id (&$id)
 		// no week 00; first week is 01
 		if (substr($id,2,2 == '00')) {return false;}
 		// maximum week is 53
-		if ((substr($id,2,1) == '5') && (substr($id,3,1) > '3'))
+		if ((substr($id,2,1) == '5') && (substr($id,3,1) != '?') && (substr($id,3,1) > '3'))
 		{return false;}
 		//escape underscores, which are considered single-character wildcards in MariaDB like clauses.
 		$id = str_replace('_','\\_',$id);
