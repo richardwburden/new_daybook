@@ -70,12 +70,12 @@ function valid_issue_date (&$issue_date)
 
 function valid_doc_id (&$id)
 {
-	if ($id != '' && preg_match('/[89abcd?][?\d][012345?][\d?][1234567?][a-z_?]{3}[?\d]{3}/i',$id)) 
+	if ($id != '' && preg_match('/[89abcd?][?\d][012345?][\d?][1234567?]....../i',$id)) 
 	{
 		// no week 00; first week is 01
 		if (substr($id,2,2 == '00')) {return false;}
 		// maximum week is 53
-		if ((substr($id,2,1) == '5') && (substr($id,3,1) > '3'))
+		if ((substr($id,2,1) == '5') && (substr($id,3,1) != '?') && (substr($id,3,1) > '3'))
 		{return false;}
 		//escape underscores, which are considered single-character wildcards in MariaDB like clauses.
 		$id = str_replace('_','\\_',$id);
