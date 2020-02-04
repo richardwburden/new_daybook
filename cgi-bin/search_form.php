@@ -1,50 +1,138 @@
-<html>
-<head>
-<title>Find daybook headers and files</title>
-<style>
-body {font-size:16px; font-family:"Times New Roman", Times, serif;}
-.long_text, .long_text input {clear:both;width:100%; float:none;}
-.long_text {margin:5px}
-.short_text {float:left; margin:5px}
-.short_text input{max-width:200px;}
-.long_select {float:left; margin:5px}
-.long_select select {height:450px;}
-.short_select {float:left; margin:5px}
-.short_select select {height:130px}
-input.form-submit{clear:both; float:none;font-size:200%}
-input.form-checkbox{margin-right:20px}
-div.radio {clear:none; display:inline; margin:0 2px 0 4px; padding:2px 4px; font-weight:bold; background-color:black; color:white;}
-
-hr {clear:both; width:100%; float:none}
-textarea {width:100%}
-p {clear:both}
-div.header {clear:both;margin:1em 0;line-height:120%}
-div.link, div.data {clear:none; display:inline}
-div.logout {clear:none; display:inline; margin:0 0 0 12px;  font-weight:bold;}
-
-.headersHeader{text-align:center;font-weight:bold}
-h2 {text-align:center}
-</style>
-
-</head>
-<body>
-<h2>Find daybook headers and files</h2>
 <?php
-function normalize ($string) {
-  $table = array(
-		 'Š'=>'S', 'š'=>'s', 'Ð'=>'Dj', 'd'=>'dj', 'Ž'=>'Z', 'ž'=>'z', 'C'=>'C', 'c'=>'c', 'C'=>'C', 'c'=>'c',
-		 'À'=>'A', 'Á'=>'A', 'Â'=>'A', 'Ã'=>'A', 'Ä'=>'A', 'Å'=>'A', 'Æ'=>'A', 'Ç'=>'C', 'È'=>'E', 'É'=>'E',
-		 'Ê'=>'E', 'Ë'=>'E', 'Ì'=>'I', 'Í'=>'I', 'Î'=>'I', 'Ï'=>'I', 'Ñ'=>'N', 'Ò'=>'O', 'Ó'=>'O', 'Ô'=>'O',
-		 'Õ'=>'O', 'Ö'=>'O', 'Ø'=>'O', 'Ù'=>'U', 'Ú'=>'U', 'Û'=>'U', 'Ü'=>'U', 'Ý'=>'Y', 'Þ'=>'B', 'ß'=>'Ss',
-		 'à'=>'a', 'á'=>'a', 'â'=>'a', 'ã'=>'a', 'ä'=>'a', 'å'=>'a', 'æ'=>'a', 'ç'=>'c', 'è'=>'e', 'é'=>'e',
-		 'ê'=>'e', 'ë'=>'e', 'ì'=>'i', 'í'=>'i', 'î'=>'i', 'ï'=>'i', 'ð'=>'o', 'ñ'=>'n', 'ò'=>'o', 'ó'=>'o',
-		 'ô'=>'o', 'õ'=>'o', 'ö'=>'o', 'ø'=>'o', 'ù'=>'u', 'ú'=>'u', 'û'=>'u', 'ý'=>'y', 'ý'=>'y', 'þ'=>'b',
-		 'ÿ'=>'y', 'R'=>'R', 'r'=>'r',
-		 );
-   
-  return strtr($string, $table);
+class search_form
+{
+public static $issue_date = "";
+public static $title = "";
+public static $gpo_selector = "";
+public static $class_selector = "";
+public static $system_selector = "";
+public static $topic_selector = "";
+public static $stand_selector = "";
+public static $subjt_selector = "";
+public static $security_selector = "";
+
+/* the "touched" selectors */
+static $tgpo_selector = "";
+static $tclass_selector = "";
+static $tsystem_selector = "";
+static $ttopic_selector = "";
+static $tstand_selector = "";
+static $tsubjt_selector = "";
+static $tsecurity_selector = "";
+
+static $mysqli = NULL;
+static $user = "";
+static $patterns = "";
+
+
+static function parray ($arr)
+{
+	$output = "";
+	foreach($arr as $item)
+	{$output.= "'".$item."',";}
+	if (strlen($output) > 0)
+	{
+		$output = substr($output,0,-1);
+	}
+	return $output;
 }
-function valid_issue_date (&$issue_date)
+
+
+/* add the user's selections to the selectors */
+static function touch_selectors(&$form_filled,&$sql)
+{
+	if (isset ($_REQUEST['doc_class']))
+	{
+		$form_filled = true;
+		$doc_class = $_REQUEST['doc_class'];
+		foreach ($doc_class as $class)
+		{
+			$valueAttribute = 'value="'.$class.'"';
+			self::$tclass_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$class_selector);
+		}
+
+		$sql .= 'doc_class in ('.self::parray($doc_class).') and ';
+	}
+	if (isset ($_REQUEST['gpo']))
+	{
+		$form_filled = true;
+		$gpo = $_REQUEST['gpo'];
+		foreach ($gpo as $gpocode)
+		{
+			$valueAttribute = 'value="'.$gpocode.'"';
+			self::$tgpo_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$gpo_selector);
+		}
+		$sql .= 'gpo in ('.self::parray($gpo).') and ';
+	}
+	if (isset ($_REQUEST['security']))
+{
+	$form_filled = true;
+	$security = $_REQUEST['security'];
+	foreach ($security as $seccode)
+	{
+		$valueAttribute = 'value="'.$seccode.'"';
+		self::$tsecurity_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$security_selector);
+	}
+	$sql .= 'security in ('.self::parray($security).') and ';
+}
+
+if (isset ($_REQUEST['system']))
+{
+	$form_filled = true;
+	$system = $_REQUEST['system'];
+	foreach ($system as $syscode)
+	{
+		$valueAttribute = 'value="'.$syscode.'"';
+		self::$tsystem_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$system_selector);
+	}
+	$sql .= '(sys_code00 in ('.self::parray($system).') or 
+	sys_code01 in ('.self::parray($system).') or 
+	sys_code02 in ('.self::parray($system).') or 
+	sys_code03 in ('.self::parray($system).')) and ';
+}
+
+if (isset ($_REQUEST['stand']))
+{
+	$form_filled = true;
+	$stand = $_REQUEST['stand'];
+	foreach ($stand as $stcode)
+	{
+		$valueAttribute = 'value="'.$stcode.'"';
+		self::$tstand_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$stand_selector);
+	}
+	$sql .= '(stand00 in ('.self::parray($stand).') or 
+	stand01 in ('.self::parray($stand).') or 
+	stand02 in ('.self::parray($stand).')) and ';
+}
+
+if (isset ($_REQUEST['subjt']))
+{
+	$form_filled = true;
+	$subjt = $_REQUEST['subjt'];
+	foreach ($subjt as $subcode)
+	{
+		$valueAttribute = 'value="'.$subcode.'"';
+		self::$tsubjt_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$subjt_selector);
+	}
+	$sql .= '(subjt00 in ('.self::parray($subjt).') or
+	subjt01 in ('.self::parray($subjt).') or 
+	subjt02 in ('.self::parray($subjt).')) and ';
+}
+
+if (isset ($_REQUEST['topic']))
+{
+	$form_filled = true;
+	$topic = $_REQUEST['topic'];
+	foreach ($topic as $tcode)
+	{
+		$valueAttribute = 'value="'.$tcode.'"';
+		self::$ttopic_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$topic_selector);
+	}
+	$sql .= '(topic_code00 in ('.self::parray($topic).') or
+	topic_code01 in ('.self::parray($topic).')) and ';
+}
+}
+static function valid_issue_date (&$issue_date)
 {
 	// replace wildcard '*' with the MariaDB equivalent, '%'
 	$issue_date = str_replace('*','%',$issue_date);
@@ -72,7 +160,7 @@ function valid_issue_date (&$issue_date)
 	return $valid_date;
 }
 
-function valid_doc_id (&$id)
+static function valid_doc_id (&$id)
 {
 	if ($id != '' && preg_match('/[89abcd?][?\d][012345?][\d?][1234567?]....../i',$id)) 
 	{
@@ -91,20 +179,7 @@ function valid_doc_id (&$id)
 	return false;
 }
 
-function parray ($arr)
-{
-	$output = "";
-	foreach($arr as $item)
-	{$output.= "'".$item."',";}
-	if (strlen($output) > 0)
-	{
-		$output = substr($output,0,-1);
-	}
-	return $output;
-}
-
-$GLOBALS['website_doc_root'] = 'E:\as';
-function find_latest_version_of_daybook_file ($id)
+static function find_latest_version_of_daybook_file ($id)
 {
 	$id = strtolower($id);
 	$rootdir = $GLOBALS['website_doc_root'].'\daybook_files\\';
@@ -130,18 +205,18 @@ function find_latest_version_of_daybook_file ($id)
 		else {return false;}
 	}
 }
-function valid_first_rownum($num)
+static function valid_first_rownum($num)
 {
 	if (is_numeric($num) && $num >= 0 && is_int($num + 0)) {return true;}
 	else {return false;}
 }
-function valid_max_rows($num)
+static function valid_max_rows($num)
 {
 	if (is_numeric($num) && $num >= 1 && $num <= 1000 && is_int($num + 0)) {return true;}
 	else {return false;}
 }
 
-function calculate_edit_radio ($href)
+static function calculate_edit_radio ($href)
 {
 	$doc_id = strtoupper (preg_replace('/.*\/(........)\.(...).*/','$1$2',$href));
 	$match_found = false;
@@ -154,12 +229,12 @@ function calculate_edit_radio ($href)
 	if ($match_found)
 	{
 		$GLOBALS['edit'] = true;
-	 	$radio = ' <div class="radio"><label class="radio" for="edit'.$doc_id.'">EDIT</label><input class="radio" type="radio" name="edit" id="edit'.$doc_id.'" value="'.$href.'" /></div> ';
+	 	$radio = ' <div class="radio"><label class="radio" for="edit'.$doc_id.'">EDIT</label><input class="radio" type="radio" name="edit" id="edit'.$doc_id.'" value="'.$href.'" onClick="getSelectedDocData(\''.$doc_id.'\');" /></div> ';
 	}
 	return $radio;
 }
 
-function process_query ($mysqli,$sql_count,$sql,$first_rownum)
+static function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 {
 	$headers = "";
 	$editable_headers = "";
@@ -193,10 +268,10 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 				if ($key == 'doc_id')
 				{
 					$id = strtolower($value);
-					$href = find_latest_version_of_daybook_file($id);
+					$href = self::find_latest_version_of_daybook_file($id);
 					if ($href)
 					{
-						$edit_radio = calculate_edit_radio($href);
+						$edit_radio = self::calculate_edit_radio($href);
 						$datum = '<div class="link"><b><a href="'.$href.'" target="_blank">'.$value.'</a></b></div>'.$edit_radio.' <div class="data">';
 					}
 					else
@@ -223,168 +298,173 @@ function process_query ($mysqli,$sql_count,$sql,$first_rownum)
 	return $editable_headers.$headers;
 }
 
-//include "edit_form.php";
 
-
-function process_form()
+public static function init_db_session()
 {
-/* if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != 'noedit'))
-{
-	process_edit_form()
-}
-else if (isset ($_REQUEST['newtext']))
-{
-	process_edit_submit()
-}
-*/
 $GLOBALS['doc_edit_permissions'] = array();
 $GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
 
 ini_set('max_execution_time', 300);
 
 
-$mysqli = new mysqli("localhost", "guest", "", "");
+self::$mysqli = new mysqli("localhost", "guest", "", "");
 
 /* check connection */
-if ($mysqli->connect_errno) {
-    printf("Connect failed: %s\n", $mysqli->connect_error);
+if (self::$mysqli->connect_errno) {
+    printf("Connect failed: %s\n", self::$mysqli->connect_error);
     exit();
 }
 
-if (!$mysqli->query("use ndaybook")) {
-    printf("Errormessage: %s\n", $mysqli->error);
+if (!self::$mysqli->query("use ndaybook")) {
+    printf("Errormessage: %s\n", self::$mysqli->error);
 }
 
-$user = strtoupper($_SERVER['PHP_AUTH_USER']);
+self::$user = strtoupper($_SERVER['PHP_AUTH_USER']);
+
+}
 
 
-print '<p>Hello '.$user.'. '.'<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a> ';
 
-$result = $mysqli->query("select doc_id from doc_edit_permissions where user='$user'");
+public static function init_selectors()
+{
+if (self::$mysqli === NULL)
+{
+	self::init_db_session();
+}
+self::$gpo_selector = "";
+$result = self::$mysqli->query("select distinct gpo from master order by gpo asc");
+if (!$result) {
+    printf("query to list gpos failed. Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$gpo_selector = '<label for="gpo">gpo</label><br /><select name="gpo[]" multiple class="form_select" id="gpo">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$gpo_selector.= '<option value="'.$data->gpo.'">'.$data->gpo."</option>\n";
+}
+self::$gpo_selector .= "</select>\n";
+}
+
+self::$security_selector = "";
+$result = self::$mysqli->query("select distinct security from master order by security asc");
+if (!$result) {
+    printf("query to list security levels failed. Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$security_selector = '<label for="security">security</label><br /><select name="security[]" multiple class="form_select" id="security">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$security_selector.= '<option value="'.$data->security.'">'.$data->security."</option>\n";
+}
+self::$security_selector .= "</select>\n";
+}
+
+self::$class_selector = "";
+$result = self::$mysqli->query("select * from class order by text asc");
+if (!$result) {
+    printf("Query to list document classes failed. Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$class_selector = '<label for="doc_class">doc_class</label><br /><select name="doc_class[]" multiple class="form_select" id="doc_class">'."\n";
+
+while ($data = $result->fetch_object())
+{
+	self::$class_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
+}
+self::$class_selector .= "</select>\n";
+}
+
+self::$system_selector = "";
+$result = self::$mysqli->query("select * from system order by text asc");
+if (!$result) {
+    printf("Query to list systems failed. Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$system_selector = '<label for="system">system</label><br /><select name="system[]" multiple class="form_select" id="system">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$system_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
+}
+self::$system_selector .= "</select>\n";
+}
+
+self::$topic_selector = "";
+$result = self::$mysqli->query("select * from topic order by text asc");
+if (!$result) {
+    printf("Query to list topics failed. Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$topic_selector = '<label for="topic">topic</label><br /><select name="topic[]" multiple class="form_select" id="topic">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$topic_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
+}
+self::$topic_selector .= "</select>\n";
+}
+
+self::$stand_selector = "";
+$result = self::$mysqli->query("select * from stand order by text asc");
+if (!$result) {
+    printf("Query to list stands failed: Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$stand_selector = '<label for="stand">stand</label><br /><select name="stand[]" multiple class="form_select" id="stand">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$stand_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
+}
+self::$stand_selector .= "</select>\n";
+}
+
+self::$subjt_selector = "";
+$result = self::$mysqli->query("select distinct subjt from dtl order by subjt asc");
+if (!$result) {
+    printf("Query to list subjts failed: Errormessage: %s\n", self::$mysqli->error);
+}
+else
+{
+self::$subjt_selector = '<label for="subjt">subjt</label><br /><select name="subjt[]" multiple class="form_select" id="subjt">'."\n";
+while ($data = $result->fetch_object())
+{
+	self::$subjt_selector.= '<option value="'.$data->subjt.'">'.$data->subjt."</option>\n";
+}
+self::$subjt_selector .= "</select>\n";
+}
+}
+
+
+
+public static function process_form()
+{
+self::init_db_session();
+print '<p>Hello '.self::$user.'. '.'<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a> ';
+
+$result = self::$mysqli->query("select doc_id from doc_edit_permissions where user='".self::$user."'");
 $dep_wildcards = array('*','?');
 $dep_wildcard_repls = array('.*','.');
-$patterns = "";
+
 while ($data = $result->fetch_object())
 {
 	$raw_pat = $data->doc_id;
-	$patterns .= "'$raw_pat', ";
+	self::$patterns .= "'$raw_pat', ";
 	$pat = str_replace($dep_wildcards,$dep_wildcard_repls,$raw_pat);
 	array_push($GLOBALS['doc_edit_permissions'],$pat);
 }
-if ($patterns == '')
+if (self::$patterns == '')
 {print "You may not edit anything.</p>\n";}
 else
 {
-	$patterns = substr($patterns,0,-2);
-	print "You may edit documents with ids matching patterns: $patterns</p>\n";
+	self::$patterns = substr(self::$patterns,0,-2);
+	print "You may edit documents with ids matching patterns: ".self::$patterns."</p>\n";
 }
 
-$gpo_selector = "";
-$result = $mysqli->query("select distinct gpo from master order by gpo asc");
-if (!$result) {
-    printf("query to list gpos failed. Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$gpo_selector = '<label for="gpo">gpo</label><br /><select name="gpo[]" multiple class="form_select" id="gpo">'."\n";
-while ($data = $result->fetch_object())
-{
-	$gpo_selector.= '<option value="'.$data->gpo.'">'.$data->gpo."</option>\n";
-}
-$gpo_selector .= "</select>\n";
-}
-
-$security_selector = "";
-$result = $mysqli->query("select distinct security from master order by security asc");
-if (!$result) {
-    printf("query to list security levels failed. Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$security_selector = '<label for="security">security</label><br /><select name="security[]" multiple class="form_select" id="security">'."\n";
-while ($data = $result->fetch_object())
-{
-	$security_selector.= '<option value="'.$data->security.'">'.$data->security."</option>\n";
-}
-$security_selector .= "</select>\n";
-}
-
-$class_selector = "";
-$result = $mysqli->query("select * from class order by text asc");
-if (!$result) {
-    printf("Query to list document classes failed. Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$class_selector = '<label for="doc_class">doc_class</label><br /><select name="doc_class[]" multiple class="form_select" id="doc_class">'."\n";
-
-while ($data = $result->fetch_object())
-{
-	$class_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
-}
-$class_selector .= "</select>\n";
-}
-
-$system_selector = "";
-$result = $mysqli->query("select * from system order by text asc");
-if (!$result) {
-    printf("Query to list systems failed. Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$system_selector = '<label for="system">system</label><br /><select name="system[]" multiple class="form_select" id="system">'."\n";
-while ($data = $result->fetch_object())
-{
-	$system_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
-}
-$system_selector .= "</select>\n";
-}
-
-$topic_selector = "";
-$result = $mysqli->query("select * from topic order by text asc");
-if (!$result) {
-    printf("Query to list topics failed. Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$topic_selector = '<label for="topic">topic</label><br /><select name="topic[]" multiple class="form_select" id="topic">'."\n";
-while ($data = $result->fetch_object())
-{
-	$topic_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
-}
-$topic_selector .= "</select>\n";
-}
-
-$stand_selector = "";
-$result = $mysqli->query("select * from stand order by text asc");
-if (!$result) {
-    printf("Query to list stands failed: Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$stand_selector = '<label for="stand">stand</label><br /><select name="stand[]" multiple class="form_select" id="stand">'."\n";
-while ($data = $result->fetch_object())
-{
-	$stand_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
-}
-$stand_selector .= "</select>\n";
-}
-
-$subjt_selector = "";
-$result = $mysqli->query("select distinct subjt from dtl order by subjt asc");
-if (!$result) {
-    printf("Query to list subjts failed: Errormessage: %s\n", $mysqli->error);
-}
-else
-{
-$subjt_selector = '<label for="subjt">subjt</label><br /><select name="subjt[]" multiple class="form_select" id="subjt">'."\n";
-while ($data = $result->fetch_object())
-{
-	$subjt_selector.= '<option value="'.$data->subjt.'">'.$data->subjt."</option>\n";
-}
-$subjt_selector .= "</select>\n";
-}
-
+self::init_selectors();
 
 $invalid_fields = "";
 $doc_id_saved = "";
@@ -420,40 +500,17 @@ if (isset ($_REQUEST['doc_id']))
 {
 	$doc_id_saved = $_REQUEST['doc_id'];
 	$doc_id = trim($doc_id_saved);
-	if (valid_doc_id($doc_id))
+	if (self::valid_doc_id($doc_id))
 	{$sql .= 'doc_id like "'.$doc_id.'" and '; 
 	$form_filled = true;}
 	else if ($doc_id != ''){$invalid_fields .= "doc_id: $doc_id_saved, ";}
 }
-if (isset ($_REQUEST['doc_class']))
-{
-	$form_filled = true;
-	$doc_class = $_REQUEST['doc_class'];
-	foreach ($doc_class as $class)
-	{
-		$valueAttribute = 'value="'.$class.'"';
-		$class_selector = str_replace($valueAttribute,$valueAttribute.' selected',$class_selector);
-	}
 
-//	$class_selector = preg_replace('/slct_[A-Z]+/s','',$class_selector);
-	$sql .= 'doc_class in ('.parray($doc_class).') and ';
-}
-if (isset ($_REQUEST['gpo']))
-{
-	$form_filled = true;
-	$gpo = $_REQUEST['gpo'];
-	foreach ($gpo as $gpocode)
-	{
-		$valueAttribute = 'value="'.$gpocode.'"';
-		$gpo_selector = str_replace($valueAttribute,$valueAttribute.' selected',$gpo_selector);
-	}
-	$sql .= 'gpo in ('.parray($gpo).') and ';
-}
 if (isset ($_REQUEST['issue_date']))
 {
 	$issue_date_saved = $_REQUEST['issue_date'];
 	$issue_date = trim($issue_date_saved);
-	if (valid_issue_date($issue_date))
+	if (self::valid_issue_date($issue_date))
 	{$sql .= 'issue_date like "'.$issue_date.'" and '; 
 	$form_filled = true;}
 	else if ($issue_date != ''){$invalid_fields .= "issue_date: $issue_date_saved, ";}
@@ -488,93 +545,22 @@ if (isset ($_REQUEST['title']))
 	if (strlen($title) > $max_title_length) {$invalid_fields .= "title: $title_saved, ";}
 	else if ($title != '') {$sql .= 'title like "'.$title.'" and '; $form_filled = true;}
 }
-if (isset ($_REQUEST['security']))
-{
-	$form_filled = true;
-	$security = $_REQUEST['security'];
-	foreach ($security as $seccode)
-	{
-		$valueAttribute = 'value="'.$seccode.'"';
-		$security_selector = str_replace($valueAttribute,$valueAttribute.' selected',$security_selector);
-	}
-	$sql .= 'security in ('.parray($security).') and ';
-}
-/*
-if (isset ($_REQUEST['note']) && $_REQUEST['note'] != 2)
-{
-	$form_filled = true;
-	$note = $_REQUEST['note'];
-	$sql .= 'note =  '.$note.' and ';
-}
-*/
-if (isset ($_REQUEST['system']))
-{
-	$form_filled = true;
-	$system = $_REQUEST['system'];
-	foreach ($system as $syscode)
-	{
-		$valueAttribute = 'value="'.$syscode.'"';
-		$system_selector = str_replace($valueAttribute,$valueAttribute.' selected',$system_selector);
-	}
-	$sql .= '(sys_code00 in ('.parray($system).') or 
-	sys_code01 in ('.parray($system).') or 
-	sys_code02 in ('.parray($system).') or 
-	sys_code03 in ('.parray($system).')) and ';
-}
 
-if (isset ($_REQUEST['stand']))
-{
-	$form_filled = true;
-	$stand = $_REQUEST['stand'];
-	foreach ($stand as $stcode)
-	{
-		$valueAttribute = 'value="'.$stcode.'"';
-		$stand_selector = str_replace($valueAttribute,$valueAttribute.' selected',$stand_selector);
-	}
-	$sql .= '(stand00 in ('.parray($stand).') or 
-	stand01 in ('.parray($stand).') or 
-	stand02 in ('.parray($stand).')) and ';
-}
+self::touch_selectors($form_filled,$sql);
 
-if (isset ($_REQUEST['subjt']))
-{
-	$form_filled = true;
-	$subjt = $_REQUEST['subjt'];
-	foreach ($subjt as $subcode)
-	{
-		$valueAttribute = 'value="'.$subcode.'"';
-		$subjt_selector = str_replace($valueAttribute,$valueAttribute.' selected',$subjt_selector);
-	}
-	$sql .= '(subjt00 in ('.parray($subjt).') or
-	subjt01 in ('.parray($subjt).') or 
-	subjt02 in ('.parray($subjt).')) and ';
-}
-
-if (isset ($_REQUEST['topic']))
-{
-	$form_filled = true;
-	$topic = $_REQUEST['topic'];
-	foreach ($topic as $tcode)
-	{
-		$valueAttribute = 'value="'.$tcode.'"';
-		$topic_selector = str_replace($valueAttribute,$valueAttribute.' selected',$topic_selector);
-	}
-	$sql .= '(topic_code00 in ('.parray($topic).') or
-	topic_code01 in ('.parray($topic).')) and ';
-}
 $first_rownum = 0;
 $max_rows = 1000;
 if (isset ($_REQUEST['first_rownum']))
 {
 	$fr = trim($_REQUEST['first_rownum']);
-	if (valid_first_rownum($fr))
+	if (self::valid_first_rownum($fr))
 	{$first_rownum = $fr;}
 	else if ($fr != ''){$invalid_fields .= "number of rows of output to skip: $fr, ";}
 }
 if (isset ($_REQUEST['max_rows']))
 {
 	$mr = trim($_REQUEST['max_rows']);
-	if (valid_max_rows($mr))
+	if (self::valid_max_rows($mr))
 	{$max_rows = $mr;}
 	else if ($mr != ''){$invalid_fields .= "number of rows of output: $mr, ";}
 }
@@ -612,10 +598,10 @@ if ($form_filled)
 $headers = "";
 
 if ($permidx == 'checked')
-{$query1_result = process_query($mysqli,$sql_count,$sql,$first_rownum);}
+{$query1_result = self::process_query(self::$mysqli,$sql_count,$sql,$first_rownum);}
 
 if ($tempidx == 'checked')
-{$query2_result = process_query($mysqli,$sql2_count,$sql2,$first_rownum);}
+{$query2_result = self::process_query(self::$mysqli,$sql2_count,$sql2,$first_rownum);}
 
 
 $no_edit_radio = "";
@@ -628,7 +614,16 @@ if ($GLOBALS['edit'])
 if ($permidx == 'checked')
 {$headers .= "<p class=\"headersHeader\">Permanent index:</p>\n".$no_edit_radio.$query1_result;}
 if ($tempidx == 'checked')
-{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".$no_edit_radio.$query2_result;}
+{$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".
+$no_edit_radio.$query2_result;}
+
+$gpo_selector = self::$tgpo_selector;
+$class_selector = self::$tclass_selector;
+$system_selector = self::$tsystem_selector;
+$topic_selector = self::$ttopic_selector;
+$stand_selector = self::$tstand_selector;
+$subjt_selector = self::$tsubjt_selector;
+$security_selector = self::$tsecurity_selector;
 
 
 } // end if $form_filled == true
@@ -644,9 +639,18 @@ else // form not filled
 	}
 
 	$headers = "";
+	$gpo_selector = self::$gpo_selector;
+	$class_selector = self::$class_selector;
+	$system_selector = self::$system_selector;
+	$topic_selector = self::$topic_selector;
+	$stand_selector = self::$stand_selector;
+	$subjt_selector = self::$subjt_selector;
+	$security_selector = self::$security_selector;
 }
 
-print '<div style="text-align:left">
+
+
+print Latin1toUTF8 ('<div style="text-align:left">
   <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
   
    <div class="short_text">
@@ -689,7 +693,7 @@ print '<div style="text-align:left">
   <input type="hidden" name="SessionEstablished" />	   
   <input type="submit" value="Submit" class="form-submit" />'.
   $headers.
-  '</form>';
+  '</form>');
 
  // This will not clear the authentication cache, but
  // it will replace the "real" login data with bogus data
@@ -697,119 +701,6 @@ print '<div style="text-align:left">
   
 } // end process_form()
 
-
-/************** SCRIPT ENTRY POINT ************************/
-// The full url to this file is required for 
-// the Logout function
-$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth.php';
- 
-// Status flags:
-$LoginSuccessful    = false;
-$Logout             = false;
- 
-// Check username and password:
-if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
-	$usr = strtolower ($_SERVER['PHP_AUTH_USER']);
-	$pwd = $_SERVER['PHP_AUTH_PW'];
-	
-	if ($usr == '') {$usr = 'guest'; $pwd = ''; $_SERVER['PHP_AUTH_USER'] = 'guest'; $_SERVER['PHP_AUTH_PW'] = '';}
-
- 	if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
-        // reset is a special login for logout ;-)
-        $Logout = true;
-    }
-	else
-	{
-		ini_set('max_execution_time', 300);
-
-		$mysqli = new mysqli("localhost", "root", "UbetrBabl2bkitup");
-	/* check connection */
-		if ($mysqli->connect_errno) {
-    		printf("Connect failed: %s\n", $mysqli->connect_error);
-	    	exit();
-		}
-
-		$usrquery = "select password from mysql.user where user='$usr'";
-	
-		// print("<p>authentication query: $usrquery</p>\n");
-		$usrresult = $mysqli->query($usrquery);
-		if (!$usrresult) {
-    		printf("Query failed. Errormessage: %s\n", $mysqli->error);
-		}
-		else 
-		{
-			$row = $usrresult->fetch_row();
-			if ($row !== NULL)
-			{
-				$dbpwd = $row[0];
-				if ($dbpwd != '')
-				{
-					$hashquery = "select sha1(unhex(sha1('$pwd')))";
-					$hashresult = $mysqli->query($hashquery);
-					$row = $hashresult->fetch_row();
-					$mysqli->close();
-					$pwd = strtoupper('*'.$row[0]);
-				}
-				if ($pwd == $dbpwd)
-				{
-    	    		$LoginSuccessful = true;
-    			}
-				/* else  //for debugging; remove!
-				{
-					print("<p>Password hash is $dbpwd; the hash of what you entered is $pwd</p>\n");
-				
-				} */
-			}
-		}
-	}
-} 
- 
-if ($Logout){
- 
-    // The user clicked on "Logout"
-    print 'You are now logged out.';
-    print '<br/>';
-    print '<a href="https://'.$CurrentUrl.'">Login again</a>';
-}
-else if ($LoginSuccessful){
-
-if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
-{print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';
- 
- /* open document for editing */
- process_edit_form();
-
-}
-else
-{
-	process_form();
-}
-}
-else {
- 
-    /* 
-    ** The user gets here if:
-    ** 
-    ** 1. The user entered incorrect login data (three times)
-    **     --> User will see the error message from below
-    **
-    ** 2. Or the user requested the page for the first time
-    **     --> Then the 401 headers apply and the "login box" will
-    **         be shown
-    */
- 
-    // The text inside the realm section will be visible for the 
-    // user in the login box
-    header('WWW-Authenticate: Basic realm="Top-secret area"');
-    header('HTTP/1.0 401 Unauthorized');
- 
-    // Error message
-    print "Sorry, login failed!\n";
-    print "<br/>";
-    print '<a href="https://' . $CurrentUrl . '">Try again</a>';
- 
-}
-
+} // end class search_form
 ?>    
-</body>
-</html>
+

@@ -10,6 +10,14 @@
 <?php print_r ($_SERVER); 
 print_r ($_COOKIE);
 
+$str = "Hello this is a test";
+
+$tok = strtok($str, " ");
+while ($tok !== false) {
+    echo "Word=$tok<br />";
+    $tok = strtok(" ");
+}
+
 ?> </p>
 </body>
 </html>
