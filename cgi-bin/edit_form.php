@@ -48,6 +48,20 @@ public static function log_edit()
 	/* log the Sybase sql */
 
 }
+
+static function mark_selection($selection,&$selector)
+{
+	if (! isset($selector) || (substr($selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n";}
+	return;
+
+	$str = str_replace($selection, $selection.' selected', $selector);
+	if (isset($str) && (substr($str,0,6) == '<label')) 
+	{$selector = $str;}
+	else
+	{print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n";}	
+}
+
 public static function process_form()
 {
 print '<p>processing the edit form for '.$_REQUEST['edit'].'</p>';
@@ -91,6 +105,8 @@ if (isset ($_REQUEST['selectedDocData']))
 	{
 		$name = strtok($pair,':');
 		$value = strtok(':');
+		$valueAttribute = 'value="'.$value.'"';
+
 		switch ($name) {
 		case 'issue_date': 
 			self::$issue_date = $value;
@@ -99,40 +115,33 @@ if (isset ($_REQUEST['selectedDocData']))
 			self::$title = $value;
 			break;
 		case 'doc_class': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$class_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$class_selector);
+			self::mark_selection($valueAttribute, self::$class_selector);
 			break;
 		case 'gpo': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$gpo_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$gpo_selector);
+			self::mark_selection($valueAttribute, self::$gpo_selector);
 			break;
 		case 'security': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$security_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$security_selector);
+			self::mark_selection($valueAttribute, self::$security_selector);
 			break;
 		case 'sys_code00': 
 		case 'sys_code01': 
 		case 'sys_code02': 
 		case 'sys_code03': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$system_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$system_selector);
+			self::mark_selection($valueAttribute, self::$system_selector);
 			break;
 		case 'stand00': 
 		case 'stand01': 
 		case 'stand02': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$stand_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$stand_selector);
+			self::mark_selection($valueAttribute, self::$stand_selector);
 			break;
 		case 'subjt00': 
 		case 'subjt01': 
 		case 'subjt02': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$subjt_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$subjt_selector);
+			self::mark_selection($valueAttribute, self::$subjt_selector);
 			break;
 		case 'topic00': 
 		case 'topic01': 
-			$valueAttribute = 'value="'.$value.'"';
-			self::$topic_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$topic_selector);
+			self::mark_selection($valueAttribute, self::$topic_selector);
 			break;
 		} // end switch
 	} // end foreach

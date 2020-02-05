@@ -11,14 +11,14 @@ public static $stand_selector = "";
 public static $subjt_selector = "";
 public static $security_selector = "";
 
-/* the "touched" selectors */
+/* the "touched" selectors 
 static $tgpo_selector = "";
 static $tclass_selector = "";
 static $tsystem_selector = "";
 static $ttopic_selector = "";
 static $tstand_selector = "";
 static $tsubjt_selector = "";
-static $tsecurity_selector = "";
+static $tsecurity_selector = "";  */
 
 static $mysqli = NULL;
 static $user = "";
@@ -41,6 +41,7 @@ static function parray ($arr)
 /* add the user's selections to the selectors */
 static function touch_selectors(&$form_filled,&$sql)
 {
+	print "<h4>Touching selectors</h4>\n";
 	if (isset ($_REQUEST['doc_class']))
 	{
 		$form_filled = true;
@@ -48,9 +49,10 @@ static function touch_selectors(&$form_filled,&$sql)
 		foreach ($doc_class as $class)
 		{
 			$valueAttribute = 'value="'.$class.'"';
-			self::$tclass_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$class_selector);
+			self::$class_selector = str_replace($valueAttribute,			$valueAttribute.' selected',self::$class_selector);
 		}
-
+		
+	
 		$sql .= 'doc_class in ('.self::parray($doc_class).') and ';
 	}
 	if (isset ($_REQUEST['gpo']))
@@ -60,7 +62,7 @@ static function touch_selectors(&$form_filled,&$sql)
 		foreach ($gpo as $gpocode)
 		{
 			$valueAttribute = 'value="'.$gpocode.'"';
-			self::$tgpo_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$gpo_selector);
+			self::$gpo_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$gpo_selector);
 		}
 		$sql .= 'gpo in ('.self::parray($gpo).') and ';
 	}
@@ -71,7 +73,7 @@ static function touch_selectors(&$form_filled,&$sql)
 	foreach ($security as $seccode)
 	{
 		$valueAttribute = 'value="'.$seccode.'"';
-		self::$tsecurity_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$security_selector);
+		self::$security_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$security_selector);
 	}
 	$sql .= 'security in ('.self::parray($security).') and ';
 }
@@ -83,7 +85,7 @@ if (isset ($_REQUEST['system']))
 	foreach ($system as $syscode)
 	{
 		$valueAttribute = 'value="'.$syscode.'"';
-		self::$tsystem_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$system_selector);
+		self::$system_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$system_selector);
 	}
 	$sql .= '(sys_code00 in ('.self::parray($system).') or 
 	sys_code01 in ('.self::parray($system).') or 
@@ -98,7 +100,7 @@ if (isset ($_REQUEST['stand']))
 	foreach ($stand as $stcode)
 	{
 		$valueAttribute = 'value="'.$stcode.'"';
-		self::$tstand_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$stand_selector);
+		self::$stand_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$stand_selector);
 	}
 	$sql .= '(stand00 in ('.self::parray($stand).') or 
 	stand01 in ('.self::parray($stand).') or 
@@ -112,7 +114,7 @@ if (isset ($_REQUEST['subjt']))
 	foreach ($subjt as $subcode)
 	{
 		$valueAttribute = 'value="'.$subcode.'"';
-		self::$tsubjt_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$subjt_selector);
+		self::$subjt_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$subjt_selector);
 	}
 	$sql .= '(subjt00 in ('.self::parray($subjt).') or
 	subjt01 in ('.self::parray($subjt).') or 
@@ -126,7 +128,7 @@ if (isset ($_REQUEST['topic']))
 	foreach ($topic as $tcode)
 	{
 		$valueAttribute = 'value="'.$tcode.'"';
-		self::$ttopic_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$topic_selector);
+		self::$topic_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$topic_selector);
 	}
 	$sql .= '(topic_code00 in ('.self::parray($topic).') or
 	topic_code01 in ('.self::parray($topic).')) and ';
@@ -304,10 +306,14 @@ public static function init_db_session()
 $GLOBALS['doc_edit_permissions'] = array();
 $GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
 
+self::$user = strtoupper($_SERVER['PHP_AUTH_USER']);
+$usr = strtolower ($_SERVER['PHP_AUTH_USER']);
+$pwd = $_SERVER['PHP_AUTH_PW'];
+
 ini_set('max_execution_time', 300);
 
 
-self::$mysqli = new mysqli("localhost", "guest", "", "");
+self::$mysqli = new mysqli("localhost", $usr, $pwd);
 
 /* check connection */
 if (self::$mysqli->connect_errno) {
@@ -319,8 +325,6 @@ if (!self::$mysqli->query("use ndaybook")) {
     printf("Errormessage: %s\n", self::$mysqli->error);
 }
 
-self::$user = strtoupper($_SERVER['PHP_AUTH_USER']);
-
 }
 
 
@@ -331,6 +335,45 @@ if (self::$mysqli === NULL)
 {
 	self::init_db_session();
 }
+/* use cookies to avoid need to re-query the database */
+if (isset($_COOKIE['selectors_file']) && ($_COOKIE['selectors_file'] != ""))
+{
+print '<p>Filling selection lists from server file '.$_COOKIE['selectors_file'].'</p>';
+$selectors = file_get_contents($_COOKIE['selectors_file']);
+if (! isset($selectors) || (substr($selectors,0,6) != '<label')) 
+	{print "<p>Warning: invalid selectors ".substr($selectors,0,30)."...</p>\n";}
+	
+self::$gpo_selector = strtok($selectors,'#%#');
+if (! isset(self::$gpo_selector) || (substr(self::$gpo_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$gpo_selector,0,30)."...</p>\n";}
+	
+self::$class_selector = strtok('#%#');
+if (! isset(self::$class_selector) || (substr(self::$class_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$class_selector,0,30)."...</p>\n";}
+	
+self::$system_selector = strtok('#%#');
+if (! isset(self::$system_selector) || (substr(self::$system_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$system_selector,0,30)."...</p>\n";}
+	
+self::$topic_selector = strtok('#%#');
+if (! isset(self::$topic_selector) || (substr(self::$topic_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$topic_selector,0,30)."...</p>\n";}
+	
+self::$stand_selector = strtok('#%#');
+if (! isset(self::$stand_selector) || (substr(self::$stand_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$stand_selector,0,30)."...</p>\n";}
+	
+self::$subjt_selector = strtok('#%#');
+if (! isset(self::$subjt_selector) || (substr(self::$subjt_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$subjt_selector,0,30)."...</p>\n";}
+	
+self::$security_selector = strtok('#%#');
+if (! isset(self::$security_selector) || (substr(self::$security_selector,0,6) != '<label')) 
+	{print "<p>Warning: invalid selector ".substr(self::$security_selector,0,30)."...</p>\n";}
+
+return;
+}
+/* else, query the database */
 self::$gpo_selector = "";
 $result = self::$mysqli->query("select distinct gpo from master order by gpo asc");
 if (!$result) {
@@ -436,6 +479,21 @@ while ($data = $result->fetch_object())
 }
 self::$subjt_selector .= "</select>\n";
 }
+
+/* write a copy of the selection lists to a server file with a unique name for each session */
+$wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
+$sid = session_id();
+$selectors_file = $wdr.'/selectors_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+file_put_contents($selectors_file,self::$gpo_selector.'#%#');
+file_put_contents($selectors_file,self::$class_selector.'#%#',FILE_APPEND);
+file_put_contents($selectors_file,self::$system_selector.'#%#',FILE_APPEND);
+file_put_contents($selectors_file,self::$topic_selector.'#%#',FILE_APPEND);
+file_put_contents($selectors_file,self::$stand_selector.'#%#',FILE_APPEND);
+file_put_contents($selectors_file,self::$subjt_selector.'#%#',FILE_APPEND);
+file_put_contents($selectors_file,self::$security_selector,FILE_APPEND);
+
+setcookie('selectors_file',$selectors_file);
+
 }
 
 
@@ -617,13 +675,14 @@ if ($tempidx == 'checked')
 {$headers .= "<p class=\"headersHeader\">Temporary index:</p>\n".
 $no_edit_radio.$query2_result;}
 
+/*
 $gpo_selector = self::$tgpo_selector;
 $class_selector = self::$tclass_selector;
 $system_selector = self::$tsystem_selector;
 $topic_selector = self::$ttopic_selector;
 $stand_selector = self::$tstand_selector;
 $subjt_selector = self::$tsubjt_selector;
-$security_selector = self::$tsecurity_selector;
+$security_selector = self::$tsecurity_selector; */
 
 
 } // end if $form_filled == true
@@ -639,13 +698,13 @@ else // form not filled
 	}
 
 	$headers = "";
-	$gpo_selector = self::$gpo_selector;
+/*	$gpo_selector = self::$gpo_selector;
 	$class_selector = self::$class_selector;
 	$system_selector = self::$system_selector;
 	$topic_selector = self::$topic_selector;
 	$stand_selector = self::$stand_selector;
 	$subjt_selector = self::$subjt_selector;
-	$security_selector = self::$security_selector;
+	$security_selector = self::$security_selector; */
 }
 
 
@@ -678,16 +737,16 @@ print Latin1toUTF8 ('<div style="text-align:left">
   <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="'.$title_saved.'" />
   </div>
  
-  <div class="long_select">'.$class_selector.'</div>
+  <div class="long_select">'.self::$class_selector.'</div>
  
-  <div class="long_select">'.$system_selector.'</div>
-  <div class="long_select">'.$topic_selector.'</div>
-  <div class="long_select">'.$stand_selector.'</div>
-  <div class="long_select">'.$subjt_selector.'</div>
+  <div class="long_select">'.self::$system_selector.'</div>
+  <div class="long_select">'.self::$topic_selector.'</div>
+  <div class="long_select">'.self::$stand_selector.'</div>
+  <div class="long_select">'.self::$subjt_selector.'</div>
  
- <div class="short_select">'.$gpo_selector.'</div>
+ <div class="short_select">'.self::$gpo_selector.'</div>
  
- <div class="short_select">'.$security_selector.'</div>
+ <div class="short_select">'.self::$security_selector.'</div>
 
 <img alt="clear" class="clear" src="/site/1x16000-clear.gif">
   <input type="hidden" name="SessionEstablished" />	   

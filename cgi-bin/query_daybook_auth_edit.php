@@ -48,7 +48,7 @@ function getSelectedDocData(doc_id)
 <h2>Find daybook headers and files</h2>
 
 <?php
-
+session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
 
 function Latin1toUTF8 ($str)
@@ -64,7 +64,7 @@ include "edit_form.php";
 // The full url to this file is required for 
 // the Logout function
 $CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth_edit.php';
- 
+
 // Status flags:
 $LoginSuccessful    = false;
 $Logout             = false;
@@ -129,27 +129,31 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 if ($Logout){
  
     // The user clicked on "Logout"
+setcookie('selectors_file',"");
+
+//header('location: index.php');
+
     print 'You are now logged out.';
     print '<br/>';
     print '<a href="https://'.$CurrentUrl.'">Login again</a>';
 }
-else if ($LoginSuccessful){
-
-if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
-{print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';
- 
- /* open document for editing */
-	edit_form::process_form();
-
-}
-else
+else if ($LoginSuccessful)
 {
-	if (isset ($_REQUEST['doctext']))
+	if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
 	{
-		edit_form::log_edit();
+		print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';
+ 
+	 /* open document for editing */
+		edit_form::process_form();
 	}
-	search_form::process_form();
-}
+	else
+	{
+		if (isset ($_REQUEST['doctext']))
+		{
+			edit_form::log_edit();
+		}
+		search_form::process_form();
+	}
 }
 else {
  
