@@ -41,7 +41,7 @@ static function parray ($arr)
 /* add the user's selections to the selectors */
 static function touch_selectors(&$form_filled,&$sql)
 {
-	print "<h4>Touching selectors</h4>\n";
+	//print "<h4>Touching selectors</h4>\n";
 	if (isset ($_REQUEST['doc_class']))
 	{
 		$form_filled = true;

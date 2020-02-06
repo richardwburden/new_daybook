@@ -51,11 +51,20 @@ public static function log_edit()
 
 static function mark_selection($selection,&$selector)
 {
+	/*
+	print "<p>marking selection: replacing ".$selection."</p>\n";
 	if (! isset($selector) || (substr($selector,0,6) != '<label')) 
-	{print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n";}
-	return;
-
-	$str = str_replace($selection, $selection.' selected', $selector);
+	{print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n"; return;}
+	*/
+	$count = 0;
+	
+	$str = str_replace($selection, $selection.' selected', $selector, $count);
+	/*
+	if ($count)
+	{print '<p>'.$count.' selections marked'."<p>\n";}
+	else
+	{print '<p> selection not found <p>'."\n";}
+	*/
 	if (isset($str) && (substr($str,0,6) == '<label')) 
 	{$selector = $str;}
 	else
