@@ -51,20 +51,74 @@ function getSelectedDocData(doc_id)
 <?php
 session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
+$GLOBALS['wdr'] = 'E:/as';
+$GLOBALS['daybook_files_dir'] = 'E:/as/daybook_files';
 
 function Latin1toUTF8 ($str)
 {
 	return mb_convert_encoding($str,'UTF-8','ISO-8859-1');
 }
+function printErr($str)
+{
+	print '<p>'.$str.'</p>'."\n";
+}
 
-include "search_form.php";
+function init_user($user = NULL)
+{
+        if ($user === NULL)
+        {
+            $GLOBALS['user'] = strtoupper($_SERVER['PHP_AUTH_USER']);
+            $GLOBALS['usr'] = strtolower($_SERVER['PHP_AUTH_USER']);
+        }
+        else
+        {
+			$GLOBALS['user'] = strtoupper($user);
+			$GLOBALS['usr'] = strtolower($user);
+		}
+		if  ($GLOBALS['usr'] == '')
+		{
+			$GLOBALS['user'] = 'GUEST';
+			$GLOBALS['usr'] = 'guest';
+			$_SERVER['PHP_AUTH_PW'] = '';
+		}
+}
 
-include "edit_form.php";
+
+function init_db_session($user = NULL)
+{
+        init_user($user);
+        $GLOBALS['doc_edit_permissions'] = array();
+        $GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
+
+        $pwd = $_SERVER['PHP_AUTH_PW'];
+
+        ini_set('max_execution_time', 300);
+
+
+        $GLOBALS['mysqli'] = new mysqli("localhost", $GLOBALS['usr'], $pwd);
+
+        /* check connection */
+        if ($GLOBALS['mysqli']->connect_errno) {
+            printf("Connect failed: %s\n", $GLOBALS['mysqli']->connect_error);
+            exit();
+        }
+
+        if (!$GLOBALS['mysqli']->query("use ndaybook")) {
+            printf("Errormessage: %s\n", $GLOBALS['mysqli']->error);
+        }
+
+}
+
+
+
+include "search_formd.php";
+
+include "edit_formd.php";
 
 /************** SCRIPT ENTRY POINT ************************/
 // The full url to this file is required for 
 // the Logout function
-$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth_edit.php';
+$CurrentUrl         = '62u-wi7-rwb/cgi-bin/qdd.php';
 
 // Status flags:
 $LoginSuccessful    = false;
@@ -72,32 +126,30 @@ $Logout             = false;
  
 // Check username and password:
 if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
-	$usr = strtolower ($_SERVER['PHP_AUTH_USER']);
+	init_user();
 	$pwd = $_SERVER['PHP_AUTH_PW'];
 	
-	if ($usr == '') {$usr = 'guest'; $pwd = ''; $_SERVER['PHP_AUTH_USER'] = 'guest'; $_SERVER['PHP_AUTH_PW'] = '';}
-
  	if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
         // reset is a special login for logout ;-)
         $Logout = true;
     }
 	else
 	{
-		//ini_set('max_execution_time', 300);
+		ini_set('max_execution_time', 300);
 
-		$mysqli = new mysqli("localhost", "root", "UbetrBabl2bkitup");
+		$GLOBALS['mysqli'] = new mysqli("localhost", "root", "UbetrBabl2bkitup");
 	/* check connection */
-		if ($mysqli->connect_errno) {
-    		printf("Connect failed: %s\n", $mysqli->connect_error);
+		if ($GLOBALS['mysqli']->connect_errno) {
+    		printf("Connect failed: %s\n", $GLOBALS['mysqli']->connect_error);
 	    	exit();
 		}
 
 		$usrquery = "select password from mysql.user where user='$usr'";
 	
 		// print("<p>authentication query: $usrquery</p>\n");
-		$usrresult = $mysqli->query($usrquery);
+		$usrresult = $GLOBALS['mysqli']->query($usrquery);
 		if (!$usrresult) {
-    		printf("Query failed. Errormessage: %s\n", $mysqli->error);
+    		printf("Query failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
 		}
 		else 
 		{
@@ -108,9 +160,9 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 				if ($dbpwd != '')
 				{
 					$hashquery = "select sha1(unhex(sha1('$pwd')))";
-					$hashresult = $mysqli->query($hashquery);
+					$hashresult = $GLOBALS['mysqli']->query($hashquery);
 					$row = $hashresult->fetch_row();
-					$mysqli->close();
+					$GLOBALS['mysqli']->close();
 					$pwd = strtoupper('*'.$row[0]);
 				}
 				if ($pwd == $dbpwd)
@@ -140,6 +192,7 @@ setcookie('selectors_file',"");
 }
 else if ($LoginSuccessful)
 {
+	init_db_session();
 	if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
 	{
 		print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';

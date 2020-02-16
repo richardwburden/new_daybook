@@ -64,7 +64,7 @@ include "edit_form.php";
 /************** SCRIPT ENTRY POINT ************************/
 // The full url to this file is required for 
 // the Logout function
-$CurrentUrl         = '62u-wi7-rwb/cgi-bin/query_daybook_auth_edit.php';
+$CurrentUrl         = '62u-wi7-rwb/cgi-bin/qd.php';
 
 // Status flags:
 $LoginSuccessful    = false;
