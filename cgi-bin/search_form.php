@@ -405,7 +405,7 @@ class search_form
         }
 
         self::$class_selector = "";
-        $result = self::$mysqli->query("select * from class order by text asc");
+        $result = self::$mysqli->query("select code, trim(text) as text from class order by text");
         if (!$result) {
             printf("Query to list document classes failed. Errormessage: %s\n", self::$mysqli->error);
         }
@@ -421,7 +421,7 @@ class search_form
         }
 
         self::$system_selector = "";
-        $result = self::$mysqli->query("select * from system order by text asc");
+        $result = self::$mysqli->query("select code, trim(text) as text from system order by text");
         if (!$result) {
             printf("Query to list systems failed. Errormessage: %s\n", self::$mysqli->error);
         }
@@ -436,7 +436,7 @@ class search_form
         }
 
         self::$topic_selector = "";
-        $result = self::$mysqli->query("select * from topic order by text asc");
+        $result = self::$mysqli->query("select code, text, trim(both '\t' from trim(both '\"' from trim(both '\'' from trim(text)))) as t from topic order by t");
         if (!$result) {
             printf("Query to list topics failed. Errormessage: %s\n", self::$mysqli->error);
         }
@@ -451,7 +451,7 @@ class search_form
         }
 
         self::$stand_selector = "";
-        $result = self::$mysqli->query("select * from stand order by text asc");
+        $result = self::$mysqli->query("select code, text from stand order by code");
         if (!$result) {
             printf("Query to list stands failed: Errormessage: %s\n", self::$mysqli->error);
         }
@@ -460,7 +460,8 @@ class search_form
             self::$stand_selector = '<label for="stand">stand</label><br /><select name="stand[]" multiple class="form_select" id="stand">'."\n";
             while ($data = $result->fetch_object())
             {
-                self::$stand_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$data->text."</option>\n";
+				$text = str_replace(' ','&nbsp;',$data->text);
+                self::$stand_selector.= '<option value="'.$data->code.'">'.$data->code.' '.$text."</option>\n";
             }
             self::$stand_selector .= "</select>\n";
         }
@@ -661,8 +662,12 @@ class search_form
             if ($tempidx == 'checked')
             {$query2_result = self::process_query(self::$mysqli,$sql2_count,$sql2,$first_rownum);}
 
-            $new_radio = '<div class="radio"><label class="radio" for="new">NEW DOCUMENT</label><input class="radio" type="radio" name="edit" id="new" value="new"></div>';
-
+			if (self::$user == 'GUEST')
+			{$new_radio = "";}
+			else
+			{
+            	$new_radio = '<div class="radio"><label class="radio" for="new">NEW DOCUMENT</label><input class="radio" type="radio" name="edit" id="new" value="new"></div>';
+			}
             $no_edit_radio = "";
             if ($GLOBALS['edit'])
             {

@@ -137,8 +137,11 @@ class edit_form
             }
         }
         self::$doc_id = $docid_root.$znewdocnum;
-        self::$docpath = $search_dir.$docid_root.'.'.$znewdocnum.'.1.txt';
-        print '<p>Default path to new document: '.self::$docpath.'</p>'."\n";
+		// new document version set to 0 so that when it is saved in log_edit(), it will be incremented to the standard first version number, 1.
+        self::$docpath = $search_dir.$docid_root.'.'.$znewdocnum.'.0.txt';
+		// so as not to confuse the user:
+		$default_doc_path = $search_dir.$docid_root.'.'.$znewdocnum.'.1.txt';
+        print '<p>Default new doc_id: '.self::$doc_id.'<br />default path to new document: '.$default_doc_path.'</p>'."\n";
     }
     public static function test_get_year_from_alpha_date($adate)
     {
@@ -190,7 +193,16 @@ class edit_form
     
     static function verify_week_53($adate)
     {
-        //Not all alpha years have 53 weeks. Most do not.
+        /* Not all alpha years have 53 weeks. Most do not.  
+		This function returns true for all $adate not in week 53
+		For $adate in week 53, returns true if $adate's alpha year has 53 weeks
+		based on the following assumptions:
+		1. Every alpha year begins on a Sunday and ends on a Saturday, regardless of what day of the week is New Year's Day.  Therefore every alpha year has exactly 52 or 53 full weeks (no partial weeks.)
+		2. Every alpha year is completed on or before December 31 of the corresponding real year.
+		Therefore, if December 31 is not Saturday, the new alpha year begins on the last Sunday of December before New Year's Day.
+		
+		  For documents in the years before 2000, this is not reliable. 
+		*/
         $week = substr($adate,2,2);
         print '<p>week: '.$week.'</p>';
         if ($week != '53') {return true;}
@@ -218,26 +230,21 @@ class edit_form
         return ((31 - $date_mday) + $wday > 5);
     }
     
-    public static function valid_doc_id ($id)
+	// Determine whether the doc_id for a new document is valid 
+    static function valid_doc_id ($id)
     {
         $id = strtoupper($id);
         if ($id != '' && preg_match('/[89A-Z][\d][012345][\d][1234567][A-Z_][A-Z_][A-Z_][\d][\d][\d]/i',$id)) 
         {
-            // doc_id must be of the present or a past year.
-            $alpha_date = self::get_alpha_date();
-            $year = self::get_year_from_alpha_date($alpha_date);
-            $idyear = self::get_year_from_alpha_date(substr($id,0,2));
-            if ($idyear > $year) {return false;}
-            // no week 00; first week is 01
-            if (substr($id,2,2) == '00') {return false;}
-            // maximum week is 53
-            $week_decade = substr($id,2,1);
-            $dweek = substr($id,3,1);
-            if (($week_decade == 5) && ($dweek > 3))
-            {return false;}
-            $wday = substr($id,4,1);
-            if ((0 < $wday) && ($wday < 8))
-            {return self::verify_week_53(substr($id,0,5));}
+            // doc_id must begin with today's alpha date.
+            $today_adate = self::get_alpha_date();
+			$id_adate = substr($id,0,5);
+            if ($today_adate != $id_adate) {return false;}
+			// doc_id must contain the logged-in user's 3-character username, unless the user is ROOT.
+			$user = substr($id,5,3);
+			if (($user != self::$user) && (self::$user != 'ROOT'))
+			{return false;}
+			return true;
         }	
         return false;
     }
@@ -246,34 +253,67 @@ class edit_form
         return self::valid_doc_id ($id);
     }
     
+    static function find_latest_version_number ($id)
+    {
+        $id = strtolower($id);
+        $rootdir = $GLOBALS['website_doc_root'].'\daybook_files\\';
+        $year = substr($id,0,2);
+        $day = substr($id,2,3);
+        $username = substr($id,5,3);
+        $docno = substr($id,8);
+        $dirpath = $rootdir.'y'.$year.'\\'.$day;
+        // suppress directory not found warnings
+        error_reporting(E_ERROR | E_PARSE);
+        if (!$d = dir($dirpath)) {return 0;}
+        else
+        {
+            $latest_version = 0;
+            while (false !== ($e = $d->read())) {
+                if (($e==".")||($e=="..")) continue;
+                $e = strtolower($e);
+                if (substr($e,0,12) != $year.$day.$username.'.'.$docno) continue;
+                $version = substr($e,13,-4);
+                if ($version > $latest_version) {$latest_version = $version;}
+            }
+            {return $latest_version;}
+        }
+    }
+
+	
     public static function log_edit()
     {
         self::init();
         self::$docpath = $_REQUEST['docpath'];
         /* increment version number */
         $doc_version_offset = strrpos(self::$docpath,'.',-5) + 1;
+		$doc_id_offset = $doc_version_offset - 13;
         $version = substr(self::$docpath,$doc_version_offset,-4);
         $extension = substr(self::$docpath,-4);
         $version++;
         $prefix = substr(self::$docpath,0,$doc_version_offset);
         $docnum_from_docpath = substr($prefix,-4,3);
-        $doc_id_root_from_docpath = substr($prefix,-12,8);
+        $doc_id_root_from_docpath = substr($prefix,-13,8);
         $doc_id_from_docpath = strtoupper($doc_id_root_from_docpath.$docnum_from_docpath);
         if (isset($_REQUEST['doc_id']) && ($_REQUEST['doc_id'] != "") && (strtoupper($_REQUEST['doc_id']) != $doc_id_from_docpath))
         {
-
-
+			if (self::valid_doc_id($_REQUEST['doc_id']))
+			{
+				$prefix = substr($prefix,0,$doc_id_offset).substr($_REQUEST['doc_id'],0,8).'.'.substr($_REQUEST['doc_id'],8,3).'.';
+				$version = self::find_latest_version_number($_REQUEST['doc_id']) + 1;
+			}
+			else
+			{
+				print '<p>'.$_REQUEST['doc_id'].' is not a valid doc_id for a document created today by '.self::$user.'<br />Using default doc_id '.$doc_id_from_docpath.'</p>'."\n"; 
+			}
         }
-            
-
-
         self::$docpath = $prefix.$version.$extension;
 	
         /* save edited file contents as a new file with incremented version number at the end of its pathname */
         print '<p>Saving document as '.self::$docpath.'</p>';
         file_put_contents(self::$docpath,$_REQUEST['doctext']);
         /* log the creation of the new version */
-        self::$edit_log_path = self::$wdr.'/edit_log.txt';
+        $sid = session_id();
+        self::$edit_log_path = self::$wdr.'/edit_log_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
         print '<p>Appending log file '.self::$edit_log_path.'</p>';
         $log_msg = self::$docpath."\n";
         file_put_contents(self::$edit_log_path,$log_msg,FILE_APPEND);
