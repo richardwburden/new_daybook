@@ -215,6 +215,58 @@ class edit_form
         return ((31 - $date_mday) + $wday > 5);
     }
     
+	static function read_selectors(&$sql)
+    {
+        if (isset ($_REQUEST['doc_class']))
+        {
+            $sql .= 'doc_class = '.$_REQUEST['doc_class'].',';
+        }
+        if (isset ($_REQUEST['gpo']))
+        {
+            $sql .= 'gpo = '.$_REQUEST['gpo'].', ';
+        }
+        if (isset ($_REQUEST['security']))
+        {
+           $sql .= 'security = '.$_REQUEST['security'].', ';
+        }
+        if (isset ($_REQUEST['system']))
+        {
+			$sysnum = 0;
+            foreach ($_REQUEST['system'] as $sys)
+            {
+	           $sql .= 'syscode0'.$sysnum.' = '.$sys.', ';
+			   $sysnum++;
+			}
+        }
+        if (isset ($_REQUEST['stand']))
+        {
+			$standnum = 0;
+            foreach ($_REQUEST['stand'] as $stand)
+            {
+	           $sql .= 'stand0'.$standnum.' = '.$stand.', ';
+			   $standnum++;
+			}
+        }
+        if (isset ($_REQUEST['subjt']))
+        {
+			$subjtnum = 0;
+            foreach ($_REQUEST['subjt'] as $subjt)
+            {
+	           $sql .= 'subjt0'.$subjtnum.' = '.$subjt.', ';
+			   $subjtnum++;
+			}
+        }
+        if (isset ($_REQUEST['topic']))
+        {
+			$topicnum = 0;
+            foreach ($_REQUEST['topic'] as $topic)
+            {
+	           $sql .= 'topic_code0'.$topicnum.' = '.$topic.', ';
+			   $topicnum++;
+			}
+        }
+	}	
+	
 	static function doc_exists($id)
 	{
 		$result = $GLOBALS['mysqli']->query('select count(*) from headerb where doc_id = "$id"');
@@ -333,16 +385,18 @@ class edit_form
         $docnum_from_docpath = substr($prefix,-4,3);
         $doc_id_root_from_docpath = substr($prefix,-13,8);
         $doc_id_from_docpath = strtoupper($doc_id_root_from_docpath.$docnum_from_docpath);
-        if (isset($_REQUEST['doc_id']) && ($_REQUEST['doc_id'] != "") && (strtoupper($_REQUEST['doc_id']) != $doc_id_from_docpath))
+		$doc_id = $doc_id_from_docpath;
+        if (isset($_REQUEST['doc_id']) && ($_REQUEST['doc_id'] != "") && (strtoupper($_REQUEST['doc_id']) != $doc_id))
         {
 			if (self::valid_doc_id($_REQUEST['doc_id']))
 			{
-				$prefix = substr($prefix,0,$doc_id_offset).substr($_REQUEST['doc_id'],0,8).'.'.substr($_REQUEST['doc_id'],8,3).'.';
-				$version = self::find_latest_version_number($_REQUEST['doc_id']) + 1;
+				$doc_id = $_REQUEST['doc_id'];
+				$prefix = substr($prefix,0,$doc_id_offset).substr($doc_id,0,8).'.'.substr($doc_id,8,3).'.';
+				$version = self::find_latest_version_number($doc_id) + 1;
 			}
 			else
 			{
-				print '<p>'.$_REQUEST['doc_id'].' is not a valid doc_id for a document created today by '.$GLOBALS['user'].'<br />Using default doc_id '.$doc_id_from_docpath.'</p>'."\n"; 
+				print '<p>'.$_REQUEST['doc_id'].' is not a valid doc_id for a document created today by '.$GLOBALS['user'].'<br />Using default doc_id '.$doc_id.'</p>'."\n"; 
 			}
         }
         self::$docpath = $prefix.$version.$extension;
@@ -358,10 +412,15 @@ class edit_form
         file_put_contents(self::$edit_log_path,$log_msg,FILE_APPEND);
 	
         /* calculate sql (for MariaDB) to update the database with new information about the document */
-	
+		$sql = 'update dtl set ';
+		self::read_selectors($sql);
+		rtrim($sql,',');
+		$sql .= ' where doc_id = '.$doc_id.";\n";
+		
         /* execute the MariaDB sql */
 	
         /* log the MariaDB sql */
+       file_put_contents(self::$edit_log_path,$sql,FILE_APPEND);
 	
         /* calculate the sql to update the original alpha system database, which uses Sybase */
 	
@@ -373,11 +432,6 @@ class edit_form
     {
 
         $str = str_replace($selection, $selection.' selected', $selector);
-
-        if (isset($str) && (substr($str,0,6) == '<label')) 
-        {$selector = $str;}
-        else
-        {print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n";}	
     }
 
 
@@ -399,7 +453,7 @@ class edit_form
             print '<p>Creating new document</p>';
             self::calculate_new_doc_id();
         }
-        /* initialize the selectors with nothing selected, using the selection lists obtained from the database in search_form::process_form() */
+        /* initialize the selectors with nothing selected, using the selection lists obtained from the database in search_form::process_form().  Since we are using these selectors to set the metadata for a single document instead of searching for documents, the gpo, class and security selectors will no longer allow multiple selections, and the other selectors will allow only a limited number of selections as follows: system:4, stand:3, subjt:3, topic:2.  These latter limitations will be enforced by JavaScript because there is no HTML code to enforce a limited number of selections other than one.  The JavaScript is enabled by inserting the custom attribute 'max' */
         search_form::init_selectors();
 
         self::$gpo_selector = search_form::$gpo_selector;
@@ -409,6 +463,29 @@ class edit_form
         self::$stand_selector = search_form::$stand_selector;
         self::$subjt_selector = search_form::$subjt_selector;
         self::$security_selector = search_form::$security_selector;
+		
+		$max_choices = array(1,1,1,4,2,3,3);
+		$selector_ids = array('gpo','doc_class','security','system','topic','stand','subjt');
+		$selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
+		
+		printErr("modifying selectors");
+		$replen = strlen('[]" multiple');
+		$i = 0;
+		foreach ($selectors as &$selector)
+		{
+			$pos = strpos($selector, '[]" multiple');
+			$hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
+
+			if ($max_choices[$i] == 1)
+			{
+				$selector = $hidden."\n".substr_replace($selector,'"',$pos,$replen);
+			}
+			else
+			{
+				$selector = $hidden."\n".$selector;
+			}
+			$i++;
+		}
 
         if (isset ($_REQUEST['selectedDocData']))
         {

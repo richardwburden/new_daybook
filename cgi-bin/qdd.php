@@ -43,6 +43,36 @@ function getSelectedDocData(doc_id)
 	var hiddenDataTag = $('<input type="hidden" name="selectedDocData" id="selectedDocData" value="'+data.prop('innerText')+'">');
 	radio.after(hiddenDataTag);
 }
+$(document).ready(function() {
+
+          var last_valid_selection = null;
+
+          $('select[multiple]').change(function(event) {
+		  
+		    // get the id of the select tag
+		  	var selector_id = $(this).attr('id');
+			
+			/* check the number of selection only if a tag X with id selector_X exists where X is the id of the select tag.  The value attribute of tag X is the maximum number of selections
+			 */
+			var matches = $('#selector_' + selector_id);
+			if (matches.length > 0)
+			{
+		  		var limit = matches.eq(0).val();
+            	if ($(this).val().length > limit) 
+				{
+							alert("limit exceeded");
+
+              		$(this).val(last_valid_selection);
+            	}
+				else
+				{
+				    last_valid_selection = $(this).val();
+				} 
+			}
+
+          });
+        });
+
 </script>
 </head>
 <body>
