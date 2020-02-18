@@ -1,4 +1,10 @@
-perl -w beforeUpdateDaybook.pl "E:\as\users\alpha-*" "E:\as\daybook_files\alpha-*"
+perl -w beforeUpdateDaybook.pl "E:\as\users\alpha-*"
+pause
+dir "E:\as\users\new"
+pause
+perl -w beforeUpdateDaybook.pl "E:\as\daybook_files\alpha-*"
+pause
+dir "E:\as\daybook_files\new"
 pause
 perl -w convertUserFiles.pl "E:\as\users\new"
 pause

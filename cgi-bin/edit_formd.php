@@ -217,17 +217,18 @@ class edit_form
     
 	static function read_selectors(&$sql)
     {
+		/* the doc_class, gpo and security selectors are multiple selectors to allow searches matching any of multiple values, but here, when editing or creating a document, only single values are allowed. The other selectors allow unlimited selections while searching, but limited when creating or editing; in all cases, the limits are enforced by hidden input tags and JavaScript */
         if (isset ($_REQUEST['doc_class']))
         {
-            $sql .= 'doc_class = '.$_REQUEST['doc_class'].',';
+            $sql .= 'doc_class = '.$_REQUEST['doc_class'][0].',';
         }
         if (isset ($_REQUEST['gpo']))
         {
-            $sql .= 'gpo = '.$_REQUEST['gpo'].', ';
+            $sql .= 'gpo = '.$_REQUEST['gpo'][0].', ';
         }
         if (isset ($_REQUEST['security']))
         {
-           $sql .= 'security = '.$_REQUEST['security'].', ';
+           $sql .= 'security = '.$_REQUEST['security'][0].', ';
         }
         if (isset ($_REQUEST['system']))
         {
@@ -390,7 +391,7 @@ class edit_form
         {
 			if (self::valid_doc_id($_REQUEST['doc_id']))
 			{
-				$doc_id = $_REQUEST['doc_id'];
+				$doc_id = strtoupper($_REQUEST['doc_id']);
 				$prefix = substr($prefix,0,$doc_id_offset).substr($doc_id,0,8).'.'.substr($doc_id,8,3).'.';
 				$version = self::find_latest_version_number($doc_id) + 1;
 			}
@@ -412,9 +413,9 @@ class edit_form
         file_put_contents(self::$edit_log_path,$log_msg,FILE_APPEND);
 	
         /* calculate sql (for MariaDB) to update the database with new information about the document */
-		$sql = 'update dtl set ';
+		$sql = 'update master set ';
 		self::read_selectors($sql);
-		rtrim($sql,',');
+		$sql = rtrim($sql,', ');
 		$sql .= ' where doc_id = '.$doc_id.";\n";
 		
         /* execute the MariaDB sql */
@@ -431,7 +432,7 @@ class edit_form
     static function mark_selection($selection,&$selector)
     {
 
-        $str = str_replace($selection, $selection.' selected', $selector);
+        $selector = str_replace($selection, $selection.' selected', $selector);
     }
 
 
@@ -469,26 +470,19 @@ class edit_form
 		$selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
 		
 		printErr("modifying selectors");
-		$replen = strlen('[]" multiple');
+//		$replen = strlen('[]" multiple');
 		$i = 0;
 		foreach ($selectors as &$selector)
 		{
-			$pos = strpos($selector, '[]" multiple');
+//			$pos = strpos($selector, '[]" multiple');
 			$hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
-
-			if ($max_choices[$i] == 1)
-			{
-				$selector = $hidden."\n".substr_replace($selector,'"',$pos,$replen);
-			}
-			else
-			{
-				$selector = $hidden."\n".$selector;
-			}
+			$selector = $hidden."\n".$selector;
 			$i++;
 		}
 
         if (isset ($_REQUEST['selectedDocData']))
         {
+			printErr('filling form with selected document metadata: '.$_REQUEST['selectedDocData']);
             $pairs = explode ('; ',$_REQUEST['selectedDocData']);
             foreach ($pairs as $pair)
             {
