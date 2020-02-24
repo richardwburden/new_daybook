@@ -227,7 +227,7 @@ class search_form
 
     static function process_query ($mysqli,$sql_count,$sql,$first_rownum)
     {
-        $headers = "";
+	    $headers = "";
         $editable_headers = "";
         // print "<p>process_query: count query: $sql_count</p>\n";
         $count_result =  $mysqli->query($sql_count);
@@ -249,41 +249,115 @@ class search_form
 		
             print $count_msg.$result->num_rows.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
 
+
+            $row = "";
+            $synopsis = "synopsis:";
+            $last_id = "";
             while ($data = $result->fetch_array())
             {
-                $row = "";
-                $i = 0;
-                foreach ($data as $key => $value)
+                if ($data['doc_id'] != $last_id)
                 {
-                    if (is_int($key)) {continue;}
-                    if ($key == 'doc_id')
+                    if ($last_id != "")
                     {
-                        $id = strtolower($value);
-                        $href = self::find_latest_version_of_daybook_file($id);
-                        if ($href)
+                        // complete previous row
+                        $row .= $synopsis;
+                        $row = substr($row,0,-1); //remove final '|'
+                        $row .= '</div>';
+                        if ($edit_radio != '')
                         {
-                            $edit_radio = self::calculate_edit_radio($href);
-                            $datum = '<div class="link"><b><a href="'.$href.'" target="_blank">'.$value.'</a></b></div>'.$edit_radio.' <div class="data">';
+                            $editable_headers .= '<div class="header">'.$row."</div>\n";
                         }
                         else
                         {
-                            $datum = '<div class="link"><b>'.$value.'</b>(file not found) </div> <div class="data">';
+                            $headers .= '<div class="header">'.$row."</div>\n";
+                        }
+                        // start new row
+                        $row = "";
+                        $synopsis = "synopsis:";
+                    }
+                    $last_id = $data['doc_id'];
+                    foreach ($data as $key => $value)
+                    {
+                        if (is_int($key)) {continue;}
+                        if ($key == 'doc_id')
+                        {
+                            $id = strtolower($value);
+                            $href = self::find_latest_version_of_daybook_file($id);
+                            if ($href)
+                            {
+                                $edit_radio = self::calculate_edit_radio($href);
+                                $datum = '<div class="link"><b><a href="'.$href.'" target="_blank">'.$value.'</a></b></div>'.$edit_radio.' <div class="data">';
+                            }
+                            else
+                            {
+                                $datum = '<div class="link"><b>'.$value.'</b>(file not found) </div> <div class="data">';
+                            }
+                            $row .= $datum;
+                        }
+                        else
+                        {
+                            switch ($key)
+                            {
+                            case 'sys0':
+                            case 'sys1':
+                            case 'sys2':
+                            case 'sys3':
+                            case 'stand0':
+                            case 'stand1':
+                            case 'stand2':
+                            case 'topic0':
+                            case 'topic1':
+                                if (isset($value) && is_string($value) && strlen($value) > 0 && $value != ' ')
+                                {
+                                    $datum = $key.':'.$value.' ';
+                                    $row .= $datum;
+                                }
+                                break;
+                            case 'syst0':
+                            case 'syst1':
+                            case 'syst2':
+                            case 'syst3':
+                            case 'standt0':
+                            case 'standt1':
+                            case 'standt2':
+                            case 'topict0':
+                            case 'topict1':
+                                $code_key = substr($key,0,-2).substr($key,-1); // drop the 't'
+                                if (isset ($data[$code_key]) && is_string($data[$code_key]) && strlen($data[$code_key]) > 0 && $data[$code_key] != ' ')
+                                {
+                                    $datum = $value.'; ';
+                                    $row .= $datum;
+                                }
+                                break;
+                            case 'synopsis':
+                                if (isset($value) && is_string($value) && $value != '0')
+                                {$synopsis .= $value.'|';}
+                                break;
+                            case 'dtl_seqno':
+                                break;
+                            default:
+                                $datum = $key.':'.$value.'; ';
+                                $row .= $datum;
+                            }
                         }
                     }
-                    else {$datum = $key.':'.$value.'; ';}
-		
-                    $row .= $datum;
                 }
-                $row = substr($row,0,-2); //remove final '; '
-                $row .= '</div>';
-                if ($edit_radio != '')
+                else if (isset($data['synopsis']) && is_string($data['synopsis']) && $data['synopsis'] != '0')// not a new doc_id
                 {
-                    $editable_headers .= '<div class="header">'.$row."</div>\n";
+                    $synopsis .= $data['synopsis'].'|';
                 }
-                else
-                {
-                    $headers .= '<div class="header">'.$row."</div>\n";
-                }
+            }
+            // complete final row
+            $row .= $synopsis;
+            $row = substr($row,0,-1); //remove final '|'
+            $row .= '</div>';
+            if ($edit_radio != '')
+            {
+                $editable_headers .= '<div class="header">'.$row."</div>\n";
+            }
+            else
+            {
+                $headers .= '<div class="header">'.$row."</div>\n";
             }
         } // end query succeeded
         return $editable_headers.$headers;
@@ -462,6 +536,16 @@ class search_form
 
     public static function process_form()
     {
+		$search_query_root = 'select h.doc_id, d.dtl_seqno, h.title, d.synopsis, h.doc_class, h.issue_date, h.gpo, h.security, h.sys_code00 as sys0, h.sys_text00 as syst0, h.sys_code01 as sys1, h.sys_text01 as syst1, h.sys_code02 as sys2, h.sys_text02 as syst2, h.sys_code03 as sys3, h.sys_text03 as syst3, h.stand00 as stand0, s0.text as standt0, h.stand01 as stand1, s1.text as standt1, h.stand02 as stand2, s2.text as standt2, h.subjt00 as subjt0, h.subjt01 as subjt1, h.subjt02 as subjt2, h.topic_code00 as topic0, h.topic_text00 as topict0, h.topic_code01 as topic1, h.topic_text01 as topict1, h.first_page, h.last_page, h.note from headerb as h inner join dtl as d on h.doc_id = d.doc_id and ';
+		
+		/* sql code that selects the appropriate rows from the stand table to obtain the stand texts corresponding to the stand codes in headerb. This will be appended to the query because it does not narrow the selection of rows from headerb.	
+		
+				
+		 */
+		$stand_filter = ' left join stand as s0 on h.stand00 = s0.code left join stand as s1 on h.stand01 = s1.code left join stand as s2 on h.stand02 = s2.code ';
+	
+	
+		
         print '<p>Hello '.$GLOBALS['user'].'. '.'<a href="https://reset:reset@'. $GLOBALS['CurrentUrl'] .'?Logout=1"><b>LOGOUT</b></a> ';
 
         $result = $GLOBALS['mysqli']->query("select doc_id from doc_edit_permissions where user='".$GLOBALS['user']."'");
@@ -489,10 +573,11 @@ class search_form
         $doc_id_saved = "";
         $issue_date_saved = "";
         $title_saved = "";
+        $synopsis_saved = "";
         $form_filled = false;
         $permidx = '';
         $tempidx = '';
-        $sql = 'select * from headerb where ';
+        $sql = $search_query_root;
 
         if (isset ($_REQUEST['permidx']))
         {
@@ -520,7 +605,7 @@ class search_form
             $doc_id_saved = $_REQUEST['doc_id'];
             $doc_id = trim($doc_id_saved);
             if (self::valid_doc_id($doc_id))
-            {$sql .= 'doc_id like "'.$doc_id.'" and '; 
+            {$sql .= 'h.doc_id like "'.$doc_id.'" and '; 
                 $form_filled = true;}
             else if ($doc_id != ''){$invalid_fields .= "doc_id: $doc_id_saved, ";}
         }
@@ -530,7 +615,7 @@ class search_form
             $issue_date_saved = $_REQUEST['issue_date'];
             $issue_date = trim($issue_date_saved);
             if (self::valid_issue_date($issue_date))
-            {$sql .= 'issue_date like "'.$issue_date.'" and '; 
+            {$sql .= 'h.issue_date like "'.$issue_date.'" and '; 
                 $form_filled = true;}
             else if ($issue_date != ''){$invalid_fields .= "issue_date: $issue_date_saved, ";}
         }
@@ -562,7 +647,37 @@ class search_form
             $max_title_length += substr_count($title,'\\_');
             $title = strtoupper($title);
             if (strlen($title) > $max_title_length) {$invalid_fields .= "title: $title_saved, ";}
-            else if ($title != '') {$sql .= 'title like "'.$title.'" and '; $form_filled = true;}
+            else if ($title != '') {$sql .= 'h.title like "'.$title.'" and '; $form_filled = true;}
+        }
+        if (isset ($_REQUEST['synopsis']))
+        {
+            $synopsis_saved = $_REQUEST['synopsis'];
+            $synopsis = trim($synopsis_saved);
+            $max_synopsis_length = 65;
+            // we assume that underscores are not intended to be wildcards,
+            // so we escape them.
+            $synopsis = str_replace('_','\\_',$synopsis);
+            // question marks are assumed to be wildcards unless escaped.
+            // if not escaped, they must be converted to the proper MariaDB
+            // wildcard.
+            $synopsis = str_replace('\\?','\x0',$synopsis);
+            $synopsis = str_replace('?','_',$synopsis);
+            $synopsis = str_replace('\x0','?',$synopsis);
+            // asterisks are assumed to be wildcards unless escaped.
+            // if not escaped, they must be converted to the proper MariaDB
+            // wildcard.
+            // percent signs will be treated as MariaDB treats them,
+            // as wildcards unless escaped.
+            $synopsis = str_replace('\\*','\x0',$synopsis);
+            $synopsis = str_replace('*','%',$synopsis);
+            $synopsis = str_replace('\x0','*',$synopsis);
+            // the length returned by strlen counts backslashes used to 
+            // escape characters in the query as characters.
+            $max_synopsis_length += substr_count($synopsis,'\\%');
+            $max_synopsis_length += substr_count($synopsis,'\\_');
+            $synopsis = strtoupper($synopsis);
+            if (strlen($synopsis) > $max_synopsis_length) {$invalid_fields .= "synopsis: $synopsis_saved, ";}
+            else if ($synopsis != '') {$sql .= 'd.synopsis like "'.$synopsis.'" and '; $form_filled = true;}
         }
 
         self::touch_selectors($form_filled,$sql);
@@ -583,17 +698,19 @@ class search_form
             {$max_rows = $mr;}
             else if ($mr != ''){$invalid_fields .= "number of rows of output: $mr, ";}
         }
-        if (strlen($sql) > strlen('select * from headerb where '))
+        if (strlen($sql) > strlen($search_query_root))
         {$sql = substr($sql,0,-5);} // remove final ' and '
         else
         {$sql .= '0';}
-        $sql_count = str_replace ('select *','select count(*)',$sql);
-        $sql .= ' order by doc_id asc limit '.$first_rownum.', '.$max_rows;
-        $sql2_count = str_replace('headerb','tempb',$sql_count);
+        $sql .= $stand_filter.'order by h.doc_id, d.dtl_seqno asc limit '.$first_rownum.', '.$max_rows;
+        $sql_count = str_replace ('select h.doc_id','select count(h.doc_id)',$sql);
         $sql2 = str_replace('headerb','tempb',$sql);
+        $sql2 = str_replace(' dtl ',' dtlhld ',$sql);
+        $sql2_count = str_replace('headerb','tempb',$sql_count);
+        $sql2_count = str_replace(' dtl ',' dtlhld ',$sql_count);
         // A query returning the entire temporary index is acceptable
-        $sql2_count = str_replace('select count(*) from tempb where 0','select count(*) from tempb where 1',$sql2_count);
-        $sql2 = str_replace('select * from tempb where 0','select * from tempb where 1',$sql2);
+        $sql2_count = str_replace(' where 0',' where 1',$sql2_count);
+        $sql2 = str_replace(' where 0',' where 1',$sql2);
 
 
         if ($permidx == 'checked')
@@ -685,7 +802,10 @@ class search_form
  <div class="long_text">
   <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="'.$title_saved.'" />
   </div>
- 
+  <div class="long_text">
+  <label for="synopsis">synopsis</label><br /><input type="text" class="form-text"  name="synopsis" id="synopsis" length="65" value="'.$synopsis_saved.'" />
+  </div>
+
   <div class="long_select">'.self::$class_selector.'</div>
  
   <div class="long_select">'.self::$system_selector.'</div>
