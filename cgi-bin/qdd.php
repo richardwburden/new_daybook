@@ -138,7 +138,40 @@ function init_db_session($user = NULL)
         }
 
 }
-
+function process_wildcards(&$expr, &$invalid_fields, $field_name, $maxLen = 0)
+{
+    $expr_saved = $expr;
+    
+    // we assume that underscores are not intended to be wildcards,
+    // so we escape them.
+    $s = str_replace('_','\\_',$expr);
+    // question marks are assumed to be wildcards unless escaped.
+    // if not escaped, they must be converted to the proper MariaDB
+    // wildcard.
+    $s = str_replace('\\?','\x0',$s);
+    $s = str_replace('?','_',$s);
+    $s = str_replace('\x0','?',$s);
+    // asterisks are assumed to be wildcards unless escaped.
+    // if not escaped, they must be converted to the proper MariaDB
+    // wildcard.
+    // percent signs will be treated as MariaDB treats them,
+    // as wildcards unless escaped.
+    $s = str_replace('\\*','\x0',$s);
+    $s = str_replace('*','%',$s);
+    $s = str_replace('\x0','*',$s);
+    // the length returned by strlen counts backslashes used to 
+    // escape characters in the query as characters.
+    $maxLen += substr_count($s,'\\%');
+    $maxLen += substr_count($s,'\\_');
+    $sLen = strlen($s);
+    if ($maxLen > 0 && $sLen > $maxLen)
+    {
+        $invalid_fields .= "$field_name: $expr_saved [$sLen chars.;too long], ";
+        return false;
+    }
+    $expr = $s;
+    return true;
+}
 
 
 include "search_formd.php";

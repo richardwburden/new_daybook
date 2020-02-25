@@ -123,8 +123,10 @@ class search_form
 	topic_code01 in ('.self::parray($topic).')) and ';
         }
     }
-    static function valid_issue_date (&$issue_date)
+    static function valid_issue_date (&$issue_date, $like_or_regexp = 'like')
     {
+        if ($like_or_regexp == 'regexp') {return true;}
+        
         // replace wildcard '*' with the MariaDB equivalent, '%'
         $issue_date = str_replace('*','%',$issue_date);
         if (preg_match('/^[\d%?]*%[\d%?]*$/',$issue_date)) 
@@ -151,8 +153,10 @@ class search_form
         return $valid_date;
     }
 
-    static function valid_doc_id (&$id)
+    static function valid_doc_id (&$id, $like_or_regexp = 'like')
     {
+        if ($like_or_regexp == 'regexp') {return true;}
+
         if ($id != '' && preg_match('/[89abcd?][?\d][012345?][\d?][1234567?]....../i',$id)) 
         {
             // no week 00; first week is 01
@@ -231,15 +235,15 @@ class search_form
         $editable_headers = "";
         // print "<p>process_query: count query: $sql_count</p>\n";
         $count_result =  $mysqli->query($sql_count);
-        if (!$count_result) {
-            printf("Query failed. Errormessage: %s\n", $mysqli->error);
+        if ($count_result)
+        {
+            $row = $count_result->fetch_row();
+            $count_msg = "<p>$row[0] headers found; ";
         }
-        $row = $count_result->fetch_row();
-        $count_msg = "<p>$row[0] headers found; ";
 
         $result = $mysqli->query($sql);
         if (!$result) {
-            printf("Query failed. Errormessage: %s\n", $mysqli->error);
+            printErr("<b>QUERY FAILED.</b> Errormessage: $mysqli->error");
         }
         else // query succeeded
         {
@@ -247,12 +251,11 @@ class search_form
             $idx = 'p';  
             if (strpos($sql,'tempb') !== false) {$idx = 't';}
 		
-            print $count_msg.$result->num_rows.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
-
-
             $row = "";
             $synopsis = "synopsis:";
             $last_id = "";
+			$num_ids = 0;
+			$edit_radio = "";
             while ($data = $result->fetch_array())
             {
                 if ($data['doc_id'] != $last_id)
@@ -263,7 +266,7 @@ class search_form
                         $row .= $synopsis;
                         $row = substr($row,0,-1); //remove final '|'
                         $row .= '</div>';
-                        if ($edit_radio != '')
+                        if ($edit_radio != "")
                         {
                             $editable_headers .= '<div class="header">'.$row."</div>\n";
                         }
@@ -274,6 +277,8 @@ class search_form
                         // start new row
                         $row = "";
                         $synopsis = "synopsis:";
+						$edit_radio = "";
+						$num_ids++;
                     }
                     $last_id = $data['doc_id'];
                     foreach ($data as $key => $value)
@@ -348,18 +353,24 @@ class search_form
                 }
             }
             // complete final row
-            $row .= $synopsis;
-            $row = substr($row,0,-1); //remove final '|'
-            $row .= '</div>';
-            if ($edit_radio != '')
-            {
-                $editable_headers .= '<div class="header">'.$row."</div>\n";
-            }
-            else
-            {
-                $headers .= '<div class="header">'.$row."</div>\n";
-            }
+			if ($row != "")
+			{
+            	$row .= $synopsis;
+	            $row = substr($row,0,-1); //remove final '|'
+    	        $row .= '</div>';
+				$num_ids++;
+            	if ($edit_radio != "")
+            	{
+                	$editable_headers .= '<div class="header">'.$row."</div>\n";
+            	}
+            	else
+            	{
+                	$headers .= '<div class="header">'.$row."</div>\n";
+            	}
+			}
+			print $num_ids.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
         } // end query succeeded
+
         return $editable_headers.$headers;
     }
 
@@ -577,6 +588,7 @@ class search_form
         $form_filled = false;
         $permidx = '';
         $tempidx = '';
+        $regexp = '';
         $sql = $search_query_root;
 
         if (isset ($_REQUEST['permidx']))
@@ -597,87 +609,82 @@ class search_form
         if ($permidx == '' && $tempidx == 'checked')
         {$form_filled = true;}
 
-
-
-
-        if (isset ($_REQUEST['doc_id']))
+        if (isset ($_REQUEST['regexp']))
         {
-            $doc_id_saved = $_REQUEST['doc_id'];
-            $doc_id = trim($doc_id_saved);
-            if (self::valid_doc_id($doc_id))
-            {$sql .= 'h.doc_id like "'.$doc_id.'" and '; 
-                $form_filled = true;}
-            else if ($doc_id != ''){$invalid_fields .= "doc_id: $doc_id_saved, ";}
+            $regexp = 'checked';
         }
 
-        if (isset ($_REQUEST['issue_date']))
+        if ($regexp == 'checked') {$like_or_regexp = 'regexp';}
+        else {$like_or_regexp = 'like';}
+
+        if (isset ($_REQUEST['doc_id']) && $_REQUEST['doc_id'] != "")
         {
-            $issue_date_saved = $_REQUEST['issue_date'];
-            $issue_date = trim($issue_date_saved);
-            if (self::valid_issue_date($issue_date))
-            {$sql .= 'h.issue_date like "'.$issue_date.'" and '; 
-                $form_filled = true;}
-            else if ($issue_date != ''){$invalid_fields .= "issue_date: $issue_date_saved, ";}
+            $doc_id = trim($_REQUEST['doc_id']);
+            $doc_id = strtoupper($doc_id);
+            $doc_id_saved = $doc_id;
+            // $doc_id_saved is used to pre-fill the form.
+            if (self::valid_doc_id($doc_id, $like_or_regexp))
+            {
+                $sql .= 'h.doc_id '.$like_or_regexp.' "'.$doc_id.'" and '; 
+                $form_filled = true;
+            }
+            else if ($doc_id != '')
+            {$invalid_fields .= "doc_id: $doc_id_saved, ";}
         }
-        if (isset ($_REQUEST['title']))
+
+        if (isset ($_REQUEST['issue_date']) && $_REQUEST['issue_date'] != "")
         {
-            $title_saved = $_REQUEST['title'];
-            $title = trim($title_saved);
-            $max_title_length = 35;
-            // we assume that underscores are not intended to be wildcards,
-            // so we escape them.
-            $title = str_replace('_','\\_',$title);
-            // question marks are assumed to be wildcards unless escaped.
-            // if not escaped, they must be converted to the proper MariaDB
-            // wildcard.
-            $title = str_replace('\\?','\x0',$title);
-            $title = str_replace('?','_',$title);
-            $title = str_replace('\x0','?',$title);
-            // asterisks are assumed to be wildcards unless escaped.
-            // if not escaped, they must be converted to the proper MariaDB
-            // wildcard.
-            // percent signs will be treated as MariaDB treats them,
-            // as wildcards unless escaped.
-            $title = str_replace('\\*','\x0',$title);
-            $title = str_replace('*','%',$title);
-            $title = str_replace('\x0','*',$title);
-            // the length returned by strlen counts backslashes used to 
-            // escape characters in the query as characters.
-            $max_title_length += substr_count($title,'\\%');
-            $max_title_length += substr_count($title,'\\_');
+            printErr('issue_date set to "'.$_REQUEST['issue_date'].'"');
+            $issue_date = trim($_REQUEST['issue_date']);
+            $issue_date_saved = $issue_date;
+            // $issue_date_saved is used to pre-fill the form.
+            if (self::valid_issue_date($issue_date, $like_or_regexp))
+            {
+                $sql .= 'h.issue_date '.$like_or_regexp.' "'.$issue_date.'" and '; 
+                $form_filled = true;
+            }
+            else if ($issue_date != '')
+            {$invalid_fields .= "issue_date: $issue_date_saved, ";}
+        }
+        if (isset ($_REQUEST['title']) && $_REQUEST['title'] != "")
+        {
+            $title = trim($_REQUEST['title']);
             $title = strtoupper($title);
-            if (strlen($title) > $max_title_length) {$invalid_fields .= "title: $title_saved, ";}
-            else if ($title != '') {$sql .= 'h.title like "'.$title.'" and '; $form_filled = true;}
+            $title_saved = $title;
+           // $title_saved is used to pre-fill the form.
+            $valid = true;
+            if ($like_or_regexp == 'like')
+            {
+                $valid = process_wildcards($title,$invalid_fields,'title',35);
+            }
+            if ($valid)
+            {
+                if ($title != '')
+                {
+                    $sql .= 'h.title '.$like_or_regexp.' "'.$title.'" and ';
+                    $form_filled = true;
+                }
+            }
         }
-        if (isset ($_REQUEST['synopsis']))
+        if (isset ($_REQUEST['synopsis']) && $_REQUEST['synopsis'] != "")
         {
-            $synopsis_saved = $_REQUEST['synopsis'];
-            $synopsis = trim($synopsis_saved);
-            $max_synopsis_length = 65;
-            // we assume that underscores are not intended to be wildcards,
-            // so we escape them.
-            $synopsis = str_replace('_','\\_',$synopsis);
-            // question marks are assumed to be wildcards unless escaped.
-            // if not escaped, they must be converted to the proper MariaDB
-            // wildcard.
-            $synopsis = str_replace('\\?','\x0',$synopsis);
-            $synopsis = str_replace('?','_',$synopsis);
-            $synopsis = str_replace('\x0','?',$synopsis);
-            // asterisks are assumed to be wildcards unless escaped.
-            // if not escaped, they must be converted to the proper MariaDB
-            // wildcard.
-            // percent signs will be treated as MariaDB treats them,
-            // as wildcards unless escaped.
-            $synopsis = str_replace('\\*','\x0',$synopsis);
-            $synopsis = str_replace('*','%',$synopsis);
-            $synopsis = str_replace('\x0','*',$synopsis);
-            // the length returned by strlen counts backslashes used to 
-            // escape characters in the query as characters.
-            $max_synopsis_length += substr_count($synopsis,'\\%');
-            $max_synopsis_length += substr_count($synopsis,'\\_');
+            $synopsis = trim($_REQUEST['synopsis']);
             $synopsis = strtoupper($synopsis);
-            if (strlen($synopsis) > $max_synopsis_length) {$invalid_fields .= "synopsis: $synopsis_saved, ";}
-            else if ($synopsis != '') {$sql .= 'd.synopsis like "'.$synopsis.'" and '; $form_filled = true;}
+            $synopsis_saved = $synopsis;
+            // $synopsis_saved is used to pre-fill the form.
+            $valid = true;
+            if ($like_or_regexp == 'like')
+            {
+                $valid = process_wildcards($synopsis,$invalid_fields,'synopsis',65);
+            }
+            if ($valid)
+            {
+                if ($synopsis != '')
+                {
+                    $sql .= 'd.synopsis '.$like_or_regexp.' "'.$synopsis.'" and ';
+                    $form_filled = true;
+                }
+            }
         }
 
         self::touch_selectors($form_filled,$sql);
@@ -703,11 +710,12 @@ class search_form
         else
         {$sql .= '0';}
         $sql .= $stand_filter.'order by h.doc_id, d.dtl_seqno asc limit '.$first_rownum.', '.$max_rows;
-        $sql_count = str_replace ('select h.doc_id','select count(h.doc_id)',$sql);
+        $sql_count = str_replace ('select h.doc_id','select count(distinct(h.doc_id))',$sql);
+		// printErr ('sql_count: '.$sql_count);
         $sql2 = str_replace('headerb','tempb',$sql);
-        $sql2 = str_replace(' dtl ',' dtlhld ',$sql);
+        $sql2 = str_replace(' dtl ',' dtlhld ',$sql2);
         $sql2_count = str_replace('headerb','tempb',$sql_count);
-        $sql2_count = str_replace(' dtl ',' dtlhld ',$sql_count);
+        $sql2_count = str_replace(' dtl ',' dtlhld ',$sql2_count);
         // A query returning the entire temporary index is acceptable
         $sql2_count = str_replace(' where 0',' where 1',$sql2_count);
         $sql2 = str_replace(' where 0',' where 1',$sql2);
@@ -792,7 +800,9 @@ class search_form
   <hr />
  <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string (do not use this in the doc_id.)  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits<br /><b>title</b> must be less than 36 characters.
   </p>
-  
+<div class="short_text">
+     <label for="tempidx">Use MariaDB regular expressions</label> <input type="checkbox" class="form-checkbox"  name="regexp" id="regexp" '.$regexp.' />
+</div>
   <div class="short_text">
   <label for="doc_id">doc_id</label><br /><input type="text" class="form-text" length="12" name="doc_id" id="doc_id" value="'.$doc_id_saved.'" />
   </div>
