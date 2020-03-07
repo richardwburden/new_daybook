@@ -83,6 +83,8 @@ session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
 $GLOBALS['wdr'] = 'E:/as';
 $GLOBALS['daybook_files_dir'] = 'E:/as/daybook_files';
+$GLOBALS['param_separator'] = '#%@%&#';
+
 
 function Latin1toUTF8 ($str)
 {
@@ -246,6 +248,7 @@ if ($Logout){
  
     // The user clicked on "Logout"
 setcookie('selectors_file',"");
+setcookie('params_file',"");
 
 //header('location: index.php');
 

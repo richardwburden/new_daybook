@@ -543,8 +543,35 @@ class search_form
 
     }
 
+	// read params file into $_REQUEST only if returning from the edit form
+	// (isset($_REQUEST['doctext'])) and the  params file exists and is valid
+	public static function init_params()
+	{
+        if (isset($_COOKIE['params_file']) && ($_COOKIE['params_file'] != "") && isset($_REQUEST['doctext']))
+        {
+            print '<p>Getting request parameters from server file '.$_COOKIE['params_file'].'</p>';
 
-
+            // clean out $_REQUEST
+            foreach ($_REQUEST as $key => $value)
+            {
+                $_REQUEST[$key] = NULL;
+            }
+            
+            $request_string = file_get_contents($_COOKIE['params_file']);
+            if (! isset($request_string) || (strpos($request_string,$GLOBALS['param_separator']) < 0))
+            {printErr("Warning: invalid params_file"); return;}
+	
+            $pairs = explode($GLOBALS['param_separator'],$request_string);
+            foreach ($pairs as $pair)
+			{
+				if ($pair == "") {break;}
+				$name = strtok($pair,':');
+				$value = strtok($pair);
+				$_REQUEST[$name] = $value;
+			}
+        }
+	}
+	
     public static function process_form()
     {
 		$search_query_root = 'select h.doc_id, d.dtl_seqno, h.title, d.synopsis, h.doc_class, h.issue_date, h.gpo, h.security, h.sys_code00 as sys0, h.sys_text00 as syst0, h.sys_code01 as sys1, h.sys_text01 as syst1, h.sys_code02 as sys2, h.sys_text02 as syst2, h.sys_code03 as sys3, h.sys_text03 as syst3, h.stand00 as stand0, s0.text as standt0, h.stand01 as stand1, s1.text as standt1, h.stand02 as stand2, s2.text as standt2, h.subjt00 as subjt0, h.subjt01 as subjt1, h.subjt02 as subjt2, h.topic_code00 as topic0, h.topic_text00 as topict0, h.topic_code01 as topic1, h.topic_text01 as topict1, h.first_page, h.last_page, h.note from headerb as h inner join dtl as d on h.doc_id = d.doc_id and ';
@@ -590,6 +617,8 @@ class search_form
         $tempidx = '';
         $regexp = '';
         $sql = $search_query_root;
+		
+		self::init_params();
 
         if (isset ($_REQUEST['permidx']))
         {
@@ -651,7 +680,7 @@ class search_form
             $title = trim($_REQUEST['title']);
             $title = strtoupper($title);
             $title_saved = $title;
-           // $title_saved is used to pre-fill the form.
+            // $title_saved is used to pre-fill the form.
             $valid = true;
             if ($like_or_regexp == 'like')
             {
@@ -773,11 +802,11 @@ class search_form
         {
             if ($invalid_fields != "")
             {
-                print "<p>Daybook query not submitted due to invalid fields</p>\n";
+                print "<p><b>Daybook query not submitted due to invalid fields</b></p>\n";
             }
             else
             {
-                print "<p>Form not filled; query too general. Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
+                print "<p><b>Form not filled; query too general.</b> Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
             }
 
             $headers = '<br /><br />'.$new_radio;
@@ -798,10 +827,10 @@ class search_form
  
   </div>
   <hr />
- <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string (do not use this in the doc_id.)  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits<br /><b>title</b> must be less than 36 characters.
+ <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />Applies only when NOT using <a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expressions</a>, however, it is useful to note the pattern and length limits for specific fields below when constructing regular expressions for those fields.<br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string (do not use this in the doc_id.)  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits<br /><b>title</b> must be less than 36 characters.<br /><b>synopsis</b> must be less than 66 characters.
   </p>
 <div class="short_text">
-     <label for="tempidx">Use MariaDB regular expressions</label> <input type="checkbox" class="form-checkbox"  name="regexp" id="regexp" '.$regexp.' />
+     <label for="tempidx">Use MariaDB regular expressions</label> <input type="checkbox" class="form-checkbox"  name="regexp" id="regexp" '.$regexp.' /><br />Uncheck to use wildcards<br /><a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expression syntax</a>
 </div>
   <div class="short_text">
   <label for="doc_id">doc_id</label><br /><input type="text" class="form-text" length="12" name="doc_id" id="doc_id" value="'.$doc_id_saved.'" />

@@ -5,6 +5,7 @@ class edit_form
     static $doctext = "";
     static $issue_date = "";
     static $title = "";
+    static $synopsis = "";
     static $gpo_selector = "";
     static $class_selector = "";
     static $system_selector = "";
@@ -14,6 +15,7 @@ class edit_form
     static $security_selector = "";
     static $docpath = "";
     static $edit_log_path = "";
+	static $saved_search_params = array();
 
     
     static function get_alpha_date($time = 'now')
@@ -146,47 +148,47 @@ class edit_form
         return $year;
     }
     /*
-    static function verify_alpha_date($adate,$date)
-    {
-        //Verify that the alpha date $adate and the DateTime object $date specify the same date
-        $week = substr($adate,2,2);
-        if ($week != '53') {return true;}
-        $year = self::get_year_from_alpha_date($adate);
-        $wday = substr($adate,4,1);
-        $timestr = '1 January '.$year;
-        $jan1time = strtotime($timestr);
-        $jan1date = getdate($jan1time);
-        $jan1wday = $jan1date['wday'];
-        $yday = $week*7 + $wday - $jan1wday;
-        if ($week == '01' && $jan1wday > $wday)
-        {
-            // New Year's Day is not Sunday, but it's this week and is still in the future, so the actual year is still one less than the alpha system year
-            $year--;
-            // get number of days in this year that is nearing completion
-            $timestr = '31 December '.$year;
-            $dec31time = strtotime($timestr);
-            $dec31date = getdate($dec31time);
-            $dec31yday = $dec31date['yday'];
-            // in a non-leap year, $dec31yday is 364
-            $yday = $dec31yday + $wday + 1 - $jan1wday;
-        }
-        $date = date_create_from_format('Yz',$year.$yday);
-        $date_wday = $date->format('w');
-        return ($date_wday == $wday);
-    }
+      static function verify_alpha_date($adate,$date)
+      {
+      //Verify that the alpha date $adate and the DateTime object $date specify the same date
+      $week = substr($adate,2,2);
+      if ($week != '53') {return true;}
+      $year = self::get_year_from_alpha_date($adate);
+      $wday = substr($adate,4,1);
+      $timestr = '1 January '.$year;
+      $jan1time = strtotime($timestr);
+      $jan1date = getdate($jan1time);
+      $jan1wday = $jan1date['wday'];
+      $yday = $week*7 + $wday - $jan1wday;
+      if ($week == '01' && $jan1wday > $wday)
+      {
+      // New Year's Day is not Sunday, but it's this week and is still in the future, so the actual year is still one less than the alpha system year
+      $year--;
+      // get number of days in this year that is nearing completion
+      $timestr = '31 December '.$year;
+      $dec31time = strtotime($timestr);
+      $dec31date = getdate($dec31time);
+      $dec31yday = $dec31date['yday'];
+      // in a non-leap year, $dec31yday is 364
+      $yday = $dec31yday + $wday + 1 - $jan1wday;
+      }
+      $date = date_create_from_format('Yz',$year.$yday);
+      $date_wday = $date->format('w');
+      return ($date_wday == $wday);
+      }
     */
     
     static function verify_week_53($adate)
     {
         /* Not all alpha years have 53 weeks. Most do not.  
-		This function returns true for all $adate not in week 53
-		For $adate in week 53, returns true if $adate's alpha year has 53 weeks
-		based on the following assumptions:
-		1. Every alpha year begins on a Sunday and ends on a Saturday, regardless of what day of the week is New Year's Day.  Therefore every alpha year has exactly 52 or 53 full weeks (no partial weeks.)
-		2. Every alpha year is completed on or before December 31 of the corresponding real year.
-		Therefore, if December 31 is not Saturday, the new alpha year begins on the last Sunday of December before New Year's Day.
+           This function returns true for all $adate not in week 53
+           For $adate in week 53, returns true if $adate's alpha year has 53 weeks
+           based on the following assumptions:
+           1. Every alpha year begins on a Sunday and ends on a Saturday, regardless of what day of the week is New Year's Day.  Therefore every alpha year has exactly 52 or 53 full weeks (no partial weeks.)
+           2. Every alpha year is completed on or before December 31 of the corresponding real year.
+           Therefore, if December 31 is not Saturday, the new alpha year begins on the last Sunday of December before New Year's Day.
 		
-		  For documents in the years before 2000, this is not reliable. 
+           For documents in the years before 2000, this is not reliable. 
 		*/
         $week = substr($adate,2,2);
         print '<p>week: '.$week.'</p>';
@@ -220,23 +222,23 @@ class edit_form
 		/* the doc_class, gpo and security selectors are multiple selectors to allow searches matching any of multiple values, but here, when editing or creating a document, only single values are allowed. The other selectors allow unlimited selections while searching, but limited when creating or editing; in all cases, the limits are enforced by hidden input tags and JavaScript */
         if (isset ($_REQUEST['doc_class']))
         {
-            $sql .= 'doc_class = '.$_REQUEST['doc_class'][0].',';
+            $sql .= 'h.doc_class = '.$_REQUEST['doc_class'][0].',';
         }
         if (isset ($_REQUEST['gpo']))
         {
-            $sql .= 'gpo = '.$_REQUEST['gpo'][0].', ';
+            $sql .= 'h.gpo = '.$_REQUEST['gpo'][0].', ';
         }
         if (isset ($_REQUEST['security']))
         {
-           $sql .= 'security = '.$_REQUEST['security'][0].', ';
+            $sql .= 'h.security = '.$_REQUEST['security'][0].', ';
         }
         if (isset ($_REQUEST['system']))
         {
 			$sysnum = 0;
             foreach ($_REQUEST['system'] as $sys)
             {
-	           $sql .= 'syscode0'.$sysnum.' = '.$sys.', ';
-			   $sysnum++;
+                $sql .= 'h.syscode0'.$sysnum.' = '.$sys.', ';
+                $sysnum++;
 			}
         }
         if (isset ($_REQUEST['stand']))
@@ -244,8 +246,8 @@ class edit_form
 			$standnum = 0;
             foreach ($_REQUEST['stand'] as $stand)
             {
-	           $sql .= 'stand0'.$standnum.' = '.$stand.', ';
-			   $standnum++;
+                $sql .= 'h.stand0'.$standnum.' = '.$stand.', ';
+                $standnum++;
 			}
         }
         if (isset ($_REQUEST['subjt']))
@@ -253,8 +255,8 @@ class edit_form
 			$subjtnum = 0;
             foreach ($_REQUEST['subjt'] as $subjt)
             {
-	           $sql .= 'subjt0'.$subjtnum.' = '.$subjt.', ';
-			   $subjtnum++;
+                $sql .= 'h.subjt0'.$subjtnum.' = '.$subjt.', ';
+                $subjtnum++;
 			}
         }
         if (isset ($_REQUEST['topic']))
@@ -262,8 +264,8 @@ class edit_form
 			$topicnum = 0;
             foreach ($_REQUEST['topic'] as $topic)
             {
-	           $sql .= 'topic_code0'.$topicnum.' = '.$topic.', ';
-			   $topicnum++;
+                $sql .= 'h.topic_code0'.$topicnum.' = '.$topic.', ';
+                $topicnum++;
 			}
         }
 	}	
@@ -416,12 +418,12 @@ class edit_form
 		$sql = 'update master set ';
 		self::read_selectors($sql);
 		$sql = rtrim($sql,', ');
-		$sql .= ' where doc_id = '.$doc_id.";\n";
+		$sql .= ' where h.doc_id = '.$doc_id.";\n";
 		
         /* execute the MariaDB sql */
 	
         /* log the MariaDB sql */
-       file_put_contents(self::$edit_log_path,$sql,FILE_APPEND);
+        file_put_contents(self::$edit_log_path,$sql,FILE_APPEND);
 	
         /* calculate the sql to update the original alpha system database, which uses Sybase */
 	
@@ -434,6 +436,31 @@ class edit_form
 
         $selector = str_replace($selection, $selection.' selected', $selector);
     }
+
+
+	public static function save_params()
+	{
+        /*  write a copy of the search request parameters to a server file with a unique name for each session.  Exclude the 'edit', 'selectedDocData', and 'doctext' parameters, none of which are needed to redisplay the result of the previously submitted query in the search form.  In particular, 'edit' and 'selectedDocData' need to be excluded to prevent the same document or a new document from being automatically selected on the next submit. */
+        if (isset($_COOKIE['params_file']) && ($_COOKIE['params_file'] != ""))
+        {$params_file = $_COOKIE['params_file'];}
+        else
+        {
+            $wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
+            $sid = session_id();
+            $params_file = $wdr.'/params_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+            setcookie('params_file',$params_file);
+        }
+        $params = "";
+		foreach ($_REQUEST as $name => $value)
+		{
+			if ($name == 'edit' || $name == 'selectedDocData' || $name == 'doctext') {continue;}
+            $params .= $name.':'.$value.$GLOBALS['param_separator'];
+        }
+        // overwrite parameters file
+        file_put_contents($params_file,$params);
+
+	}
+
 
 
     public static function process_form()
@@ -465,24 +492,24 @@ class edit_form
         self::$subjt_selector = search_form::$subjt_selector;
         self::$security_selector = search_form::$security_selector;
 		
-		$max_choices = array(1,1,1,4,2,3,3);
-		$selector_ids = array('gpo','doc_class','security','system','topic','stand','subjt');
-		$selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
+        $max_choices = array(1,1,1,4,2,3,3);
+        $selector_ids = array('gpo','doc_class','security','system','topic','stand','subjt');
+        $selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
 		
-		printErr("modifying selectors");
-//		$replen = strlen('[]" multiple');
-		$i = 0;
-		foreach ($selectors as &$selector)
-		{
-//			$pos = strpos($selector, '[]" multiple');
-			$hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
-			$selector = $hidden."\n".$selector;
-			$i++;
-		}
+        printErr("modifying selectors");
+        //		$replen = strlen('[]" multiple');
+        $i = 0;
+        foreach ($selectors as &$selector)
+        {
+            //			$pos = strpos($selector, '[]" multiple');
+            $hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
+            $selector = $hidden."\n".$selector;
+            $i++;
+        }
 
         if (isset ($_REQUEST['selectedDocData']))
         {
-			printErr('filling form with selected document metadata: '.$_REQUEST['selectedDocData']);
+            printErr('filling form with selected document metadata: '.$_REQUEST['selectedDocData']);
             $pairs = explode ('; ',$_REQUEST['selectedDocData']);
             foreach ($pairs as $pair)
             {
@@ -497,6 +524,9 @@ class edit_form
                 case 'title': 
                     self::$title = $value;
                     break;
+                case 'synopsis': 
+                    self::$synopsis = $value;
+                    break;
                 case 'doc_class': 
                     self::mark_selection($valueAttribute, self::$class_selector);
                     break;
@@ -506,29 +536,32 @@ class edit_form
                 case 'security': 
                     self::mark_selection($valueAttribute, self::$security_selector);
                     break;
-                case 'sys_code00': 
-                case 'sys_code01': 
-                case 'sys_code02': 
-                case 'sys_code03': 
+                case 'sys0': 
+                case 'sys1': 
+                case 'sys2': 
+                case 'sys3': 
                     self::mark_selection($valueAttribute, self::$system_selector);
                     break;
-                case 'stand00': 
-                case 'stand01': 
-                case 'stand02': 
+                case 'stand0': 
+                case 'stand1': 
+                case 'stand2': 
                     self::mark_selection($valueAttribute, self::$stand_selector);
                     break;
-                case 'subjt00': 
-                case 'subjt01': 
-                case 'subjt02': 
+                case 'subjt0': 
+                case 'subjt1': 
+                case 'subjt2': 
                     self::mark_selection($valueAttribute, self::$subjt_selector);
                     break;
-                case 'topic00': 
-                case 'topic01': 
+                case 'topic0': 
+                case 'topic1': 
                     self::mark_selection($valueAttribute, self::$topic_selector);
                     break;
                 } // end switch
             } // end foreach
         } // end if isset
+
+        self::save_params();
+    
         print Latin1toUTF8('<div style="text-align:left">
   <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
   
