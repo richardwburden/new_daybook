@@ -560,7 +560,7 @@ class search_form
             $request_string = file_get_contents($_COOKIE['params_file']);
             if (! isset($request_string) || (strpos($request_string,$GLOBALS['param_separator']) < 0))
             {printErr("Warning: invalid params_file"); return;}
-	
+            /*	
             $pairs = explode($GLOBALS['param_separator'],$request_string);
             foreach ($pairs as $pair)
 			{
@@ -569,6 +569,8 @@ class search_form
 				$value = strtok($pair);
 				$_REQUEST[$name] = $value;
 			}
+            */
+            $_REQUEST = unserialize($request_string);
         }
 	}
 	

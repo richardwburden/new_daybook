@@ -18,17 +18,10 @@ class edit_form
 	static $saved_search_params = array();
 
     
-    static function get_alpha_date($time = 'now')
+    static function get_alpha_date()
     {
-        $now = array();
-        if (is_int($time) !== false)
-        {
-            $now = getdate($time);
-        }
-        else
-        {
-            $now = getdate();
-        }
+        $now = getdate();
+        
         $yday = $now['yday'];
         $wday = $now['wday'];
         $ydaymod7 = $yday % 7;
@@ -57,17 +50,6 @@ class edit_form
         if ($week < 10) {$week = '0'.$week;}
         return $year.$week.$wday;
     }
-
-    public static function test_get_alpha_date($time = 'now')
-    {
-        return self::get_alpha_date($time);
-    }   
-    public static function test_calculate_new_doc_id()
-    {
-        self::init('ROOT');
-        self::calculate_new_doc_id();
-        return self::$doc_id;
-    }   
 
     static function calculate_new_doc_id()
     {
@@ -440,7 +422,7 @@ class edit_form
 
 	public static function save_params()
 	{
-        /*  write a copy of the search request parameters to a server file with a unique name for each session.  Exclude the 'edit', 'selectedDocData', and 'doctext' parameters, none of which are needed to redisplay the result of the previously submitted query in the search form.  In particular, 'edit' and 'selectedDocData' need to be excluded to prevent the same document or a new document from being automatically selected on the next submit. */
+     /*  write a copy of the search request parameters to a server file with a unique name for each session.  Exclude the 'edit', 'selectedDocData', and 'doctext' parameters, none of which are needed to redisplay the result of the previously submitted query in the search form.  In particular, 'edit' and 'selectedDocData' need to be excluded to prevent the same document or a new document from being automatically selected on the next submit. */
         if (isset($_COOKIE['params_file']) && ($_COOKIE['params_file'] != ""))
         {$params_file = $_COOKIE['params_file'];}
         else
@@ -450,12 +432,20 @@ class edit_form
             $params_file = $wdr.'/params_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
             setcookie('params_file',$params_file);
         }
-        $params = "";
+        $params = serialize($_REQUEST);
+        $paramsu = unserialize($params);
+        $paramsu['edit'] = NULL;
+        $paramsu['selectedDocData'] = NULL;
+        $paramsu['doctext'] = NULL;
+        $params = serialize($paramsu);
+
+        
+        /*
 		foreach ($_REQUEST as $name => $value)
 		{
 			if ($name == 'edit' || $name == 'selectedDocData' || $name == 'doctext') {continue;}
             $params .= $name.':'.$value.$GLOBALS['param_separator'];
-        }
+        */
         // overwrite parameters file
         file_put_contents($params_file,$params);
 
@@ -515,7 +505,10 @@ class edit_form
             {
                 $name = strtok($pair,':');
                 $value = strtok(':');
+                // for 'sys','stand', and 'topic' metadata, extract the code from the code text combination that is in the selectedDocData for display.
+                $code = strtok($value,' ');
                 $valueAttribute = 'value="'.$value.'"';
+                $valueCodeAttribute = 'value="'.$code.'"';
 
                 switch ($name) {
                 case 'issue_date': 
@@ -539,13 +532,13 @@ class edit_form
                 case 'sys0': 
                 case 'sys1': 
                 case 'sys2': 
-                case 'sys3': 
-                    self::mark_selection($valueAttribute, self::$system_selector);
+                case 'sys3':
+                    self::mark_selection($valueCodeAttribute, self::$system_selector);
                     break;
                 case 'stand0': 
                 case 'stand1': 
-                case 'stand2': 
-                    self::mark_selection($valueAttribute, self::$stand_selector);
+                case 'stand2':
+                    self::mark_selection($valueCodeAttribute, self::$stand_selector);
                     break;
                 case 'subjt0': 
                 case 'subjt1': 
@@ -554,7 +547,7 @@ class edit_form
                     break;
                 case 'topic0': 
                 case 'topic1': 
-                    self::mark_selection($valueAttribute, self::$topic_selector);
+                   self::mark_selection($valueCodeAttribute, self::$topic_selector);
                     break;
                 } // end switch
             } // end foreach

@@ -83,8 +83,7 @@ session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
 $GLOBALS['wdr'] = 'E:/as';
 $GLOBALS['daybook_files_dir'] = 'E:/as/daybook_files';
-$GLOBALS['param_separator'] = '#%@%&#';
-
+date_default_timezone_set('America/New_York');
 
 function Latin1toUTF8 ($str)
 {
