@@ -336,9 +336,7 @@ class search_form
                                 break;
                             case 'synopsis':
                                 if (isset($value) && is_string($value) && $value != '0')
-                                {$synopsis .= $value.'|';}
-                                break;
-                            case 'dtl_seqno':
+                                {$synopsis .= $value;}
                                 break;
                             default:
                                 $datum = $key.':'.$value.'; ';
@@ -349,8 +347,9 @@ class search_form
                 }
                 else if (isset($data['synopsis']) && is_string($data['synopsis']) && $data['synopsis'] != '0')// not a new doc_id
                 {
-                    $synopsis .= $data['synopsis'].'|';
+                    $synopsis .= $data['synopsis'];
                 }
+                $synopsis .= '|';
             }
             // complete final row
 			if ($row != "")
@@ -558,18 +557,6 @@ class search_form
             }
             
             $request_string = file_get_contents($_COOKIE['params_file']);
-            if (! isset($request_string) || (strpos($request_string,$GLOBALS['param_separator']) < 0))
-            {printErr("Warning: invalid params_file"); return;}
-            /*	
-            $pairs = explode($GLOBALS['param_separator'],$request_string);
-            foreach ($pairs as $pair)
-			{
-				if ($pair == "") {break;}
-				$name = strtok($pair,':');
-				$value = strtok($pair);
-				$_REQUEST[$name] = $value;
-			}
-            */
             $_REQUEST = unserialize($request_string);
         }
 	}

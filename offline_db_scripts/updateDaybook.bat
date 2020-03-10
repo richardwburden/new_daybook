@@ -16,5 +16,5 @@ perl -w splityears.pl "E:\as\daybook_files\new"
 pause
 robocopy "E:\as\daybook_files\new" "E:\as\daybook_files" /e  /r:2 /w:10 /copy:dat
 pause
-mysql -uroot -pUbetrBabl2bkitup < ddl-ndaybook-load-data.sql
+mysql -uroot -p/ < ddl-ndaybook-load-data.sql
 pause

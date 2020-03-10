@@ -51,8 +51,8 @@ $(document).ready(function() {
 		  
 		    // get the id of the select tag
 		  	var selector_id = $(this).attr('id');
-			
-			/* check the number of selection only if a tag X with id selector_X exists where X is the id of the select tag.  The value attribute of tag X is the maximum number of selections
+
+			/* check the number of selections only if a tag X with id selector_X exists where X is the id of the select tag.  The value attribute of tag X is the maximum number of selections
 			 */
 			var matches = $('#selector_' + selector_id);
 			if (matches.length > 0)
@@ -83,6 +83,8 @@ session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
 $GLOBALS['wdr'] = 'E:/as';
 $GLOBALS['daybook_files_dir'] = 'E:/as/daybook_files';
+// end of line when writing to a file (operating system dependent)
+$GLOBALS['file_eol'] = "\r\n";
 date_default_timezone_set('America/New_York');
 
 function Latin1toUTF8 ($str)
@@ -201,14 +203,14 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 	{
 		ini_set('max_execution_time', 300);
 
-		$GLOBALS['mysqli'] = new mysqli("localhost", "root", "UbetrBabl2bkitup");
+		$GLOBALS['mysqli'] = new mysqli("localhost", "root", "/");
 	/* check connection */
 		if ($GLOBALS['mysqli']->connect_errno) {
     		printf("Connect failed: %s\n", $GLOBALS['mysqli']->connect_error);
 	    	exit();
 		}
 
-		$usrquery = "select password from mysql.user where user='$usr'";
+		$usrquery = "select authentication_string from mysql.user where user='$usr'";
 	
 		// print("<p>authentication query: $usrquery</p>\n");
 		$usrresult = $GLOBALS['mysqli']->query($usrquery);
@@ -223,21 +225,24 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 				$dbpwd = $row[0];
 				if ($dbpwd != '')
 				{
-					$hashquery = "select sha1(unhex(sha1('$pwd')))";
+					$hashquery = "select password('$pwd')";
 					$hashresult = $GLOBALS['mysqli']->query($hashquery);
 					$row = $hashresult->fetch_row();
 					$GLOBALS['mysqli']->close();
-					$pwd = strtoupper('*'.$row[0]);
+                    $pwd = $row[0];
+					// $pwd = strtoupper('*'.$row[0]);
 				}
 				if ($pwd == $dbpwd)
 				{
     	    		$LoginSuccessful = true;
     			}
-				/* else  //for debugging; remove!
+                /*
+				 else  //for debugging; remove!
 				{
 					print("<p>Password hash is $dbpwd; the hash of what you entered is $pwd</p>\n");
-				
-				} */
+                    exit;
+				} 
+                */
 			}
 		}
 	}
@@ -248,6 +253,7 @@ if ($Logout){
     // The user clicked on "Logout"
 setcookie('selectors_file',"");
 setcookie('params_file',"");
+setcookie('sc_file',"");
 
 //header('location: index.php');
 
@@ -260,7 +266,8 @@ else if ($LoginSuccessful)
 	init_db_session();
 	if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
 	{
-		print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';
+        if ($_REQUEST['edit'] != "new")
+		{print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';}
  
 	 /* open document for editing */
 		edit_form::process_form();

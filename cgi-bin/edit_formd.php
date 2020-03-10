@@ -6,6 +6,7 @@ class edit_form
     static $issue_date = "";
     static $title = "";
     static $synopsis = "";
+    static $synopsis_count = 1;
     static $gpo_selector = "";
     static $class_selector = "";
     static $system_selector = "";
@@ -70,7 +71,7 @@ class edit_form
             $glob = $search_dir.$docid_root.'.*.txt';
             print '<p>Searching '.$glob.' <br />';
             $files = glob($glob);
-            var_dump($files);
+            //var_dump($files);
             print '<p>'."\n";
         }
         else
@@ -204,22 +205,22 @@ class edit_form
 		/* the doc_class, gpo and security selectors are multiple selectors to allow searches matching any of multiple values, but here, when editing or creating a document, only single values are allowed. The other selectors allow unlimited selections while searching, but limited when creating or editing; in all cases, the limits are enforced by hidden input tags and JavaScript */
         if (isset ($_REQUEST['doc_class']))
         {
-            $sql .= 'h.doc_class = '.$_REQUEST['doc_class'][0].',';
+            $sql .= 'doc_class = '.$_REQUEST['doc_class'][0].',';
         }
         if (isset ($_REQUEST['gpo']))
         {
-            $sql .= 'h.gpo = '.$_REQUEST['gpo'][0].', ';
+            $sql .= 'gpo = '.$_REQUEST['gpo'][0].', ';
         }
         if (isset ($_REQUEST['security']))
         {
-            $sql .= 'h.security = '.$_REQUEST['security'][0].', ';
+            $sql .= 'security = '.$_REQUEST['security'][0].', ';
         }
         if (isset ($_REQUEST['system']))
         {
 			$sysnum = 0;
             foreach ($_REQUEST['system'] as $sys)
             {
-                $sql .= 'h.syscode0'.$sysnum.' = '.$sys.', ';
+                $sql .= 'syscode0'.$sysnum.' = '.$sys.', ';
                 $sysnum++;
 			}
         }
@@ -228,7 +229,7 @@ class edit_form
 			$standnum = 0;
             foreach ($_REQUEST['stand'] as $stand)
             {
-                $sql .= 'h.stand0'.$standnum.' = '.$stand.', ';
+                $sql .= 'stand0'.$standnum.' = '.$stand.', ';
                 $standnum++;
 			}
         }
@@ -237,7 +238,7 @@ class edit_form
 			$subjtnum = 0;
             foreach ($_REQUEST['subjt'] as $subjt)
             {
-                $sql .= 'h.subjt0'.$subjtnum.' = '.$subjt.', ';
+                $sql .= 'subjt0'.$subjtnum.' = '.$subjt.', ';
                 $subjtnum++;
 			}
         }
@@ -246,7 +247,7 @@ class edit_form
 			$topicnum = 0;
             foreach ($_REQUEST['topic'] as $topic)
             {
-                $sql .= 'h.topic_code0'.$topicnum.' = '.$topic.', ';
+                $sql .= 'topic_code0'.$topicnum.' = '.$topic.', ';
                 $topicnum++;
 			}
         }
@@ -393,19 +394,38 @@ class edit_form
         $sid = session_id();
         self::$edit_log_path = $GLOBALS['wdr'].'/edit_log_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
         print '<p>Appending log file '.self::$edit_log_path.'</p>';
-        $log_msg = self::$docpath."\n";
+        $log_msg = self::$docpath.$GLOBALS['file_eol'];
         file_put_contents(self::$edit_log_path,$log_msg,FILE_APPEND);
 	
         /* calculate sql (for MariaDB) to update the database with new information about the document */
 		$sql = 'update master set ';
 		self::read_selectors($sql);
 		$sql = rtrim($sql,', ');
-		$sql .= ' where h.doc_id = '.$doc_id.";\n";
-		
+		$sql .= ' where doc_id = '.$doc_id.';'.$GLOBALS['file_eol'];
+
+        /* update the synopsis for the document */
+        $sql2 = "";
+        self::init_synopsis_count();
+        $_REQUEST['synopsis'] = trim($_REQUEST['synopsis']);
+        $new_synopsis_count = substr_count($_REQUEST['synopsis'],"\n") + 1;
+        printErr("Synopsis lines before: ".self::$synopsis_count." after: ".$new_synopsis_count);
+        print("<pre>The full synopsis:\n".$_REQUEST['synopsis']."</pre>\n");
+        $sline = strtok($_REQUEST['synopsis'],$GLOBALS['file_eol']);
+        $i = 0;
+        while ($sline !== false)
+        {
+            $sql2 .= 'update dtl set synopsis = "'.$sline.'" where doc_id = "'.$doc_id.'" and dtl_seqno = '.$i.'; ('.strlen($sline).' chars.)'.$GLOBALS['file_eol'];
+            $i++;
+            $sline = strtok($GLOBALS['file_eol']);
+        }
+                
+
         /* execute the MariaDB sql */
 	
         /* log the MariaDB sql */
         file_put_contents(self::$edit_log_path,$sql,FILE_APPEND);
+        if ($sql2 != "")
+        {file_put_contents(self::$edit_log_path,$sql2,FILE_APPEND);}
 	
         /* calculate the sql to update the original alpha system database, which uses Sybase */
 	
@@ -420,6 +440,32 @@ class edit_form
     }
 
 
+    
+    static function save_synopsis_count()
+    {
+        if (isset($_COOKIE['sc_file']) && ($_COOKIE['sc_file'] != ""))
+        {$sc_file = $_COOKIE['sc_file'];}
+        else
+        {
+            $wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
+            $sid = session_id();
+            $sc_file = $wdr.'/sc_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+            setcookie('sc_file',$sc_file);
+        }
+        // overwrite sc file
+        file_put_contents($sc_file,self::$synopsis_count);
+	}
+    static function init_synopsis_count()
+    {
+        if (isset($_COOKIE['sc_file']) && ($_COOKIE['sc_file'] != ""))
+        {
+            printErr("Getting synopsis count from server file ".$_COOKIE['sc_file']);
+            self::$synopsis_count = file_get_contents($_COOKIE['sc_file']);
+        }
+    }
+
+
+    
 	public static function save_params()
 	{
      /*  write a copy of the search request parameters to a server file with a unique name for each session.  Exclude the 'edit', 'selectedDocData', and 'doctext' parameters, none of which are needed to redisplay the result of the previously submitted query in the search form.  In particular, 'edit' and 'selectedDocData' need to be excluded to prevent the same document or a new document from being automatically selected on the next submit. */
@@ -439,16 +485,8 @@ class edit_form
         $paramsu['doctext'] = NULL;
         $params = serialize($paramsu);
 
-        
-        /*
-		foreach ($_REQUEST as $name => $value)
-		{
-			if ($name == 'edit' || $name == 'selectedDocData' || $name == 'doctext') {continue;}
-            $params .= $name.':'.$value.$GLOBALS['param_separator'];
-        */
         // overwrite parameters file
         file_put_contents($params_file,$params);
-
 	}
 
 
@@ -486,11 +524,13 @@ class edit_form
         $selector_ids = array('gpo','doc_class','security','system','topic','stand','subjt');
         $selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
 		
-        printErr("modifying selectors");
+        print("<p>Imposing multiple selection limits on selection lists (no such limits exist when searching for a document): ");
         //		$replen = strlen('[]" multiple');
         $i = 0;
         foreach ($selectors as &$selector)
         {
+            if ($i > 0) {print ', ';}
+            print($selector_ids[$i].':'.$max_choices[$i]);
             //			$pos = strpos($selector, '[]" multiple');
             $hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
             $selector = $hidden."\n".$selector;
@@ -500,13 +540,16 @@ class edit_form
         if (isset ($_REQUEST['selectedDocData']))
         {
             printErr('filling form with selected document metadata: '.$_REQUEST['selectedDocData']);
+            self::$synopsis_count = 1;
             $pairs = explode ('; ',$_REQUEST['selectedDocData']);
             foreach ($pairs as $pair)
             {
-                $name = strtok($pair,':');
-                $value = strtok(':');
+                $namelen = strpos($pair,':');
+                $name = substr($pair,0,$namelen);
+                $value = substr($pair,$namelen+1);
                 // for 'sys','stand', and 'topic' metadata, extract the code from the code text combination that is in the selectedDocData for display.
-                $code = strtok($value,' ');
+                $codelen = strpos($value,' ');
+                $code = substr($value,0,$codelen);
                 $valueAttribute = 'value="'.$value.'"';
                 $valueCodeAttribute = 'value="'.$code.'"';
 
@@ -519,6 +562,11 @@ class edit_form
                     break;
                 case 'synopsis': 
                     self::$synopsis = $value;
+                    self::$synopsis_count = substr_count($value,'|')+1;
+                    if (strlen($value) > 0)
+                    {
+                        self::$synopsis = str_replace('|',"\n",self::$synopsis);
+                    }
                     break;
                 case 'doc_class': 
                     self::mark_selection($valueAttribute, self::$class_selector);
@@ -554,6 +602,7 @@ class edit_form
         } // end if isset
 
         self::save_params();
+        self::save_synopsis_count();
     
         print Latin1toUTF8('<div style="text-align:left">
   <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
@@ -569,6 +618,10 @@ class edit_form
   </div>
  <div class="long_text">
   <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="'.self::$title.'" />
+  </div>
+
+ <label for="synopsis">synopsis</label><br /><textarea name="synopsis" id="synopsis" rows="12">'.self::$synopsis.'</textarea>
+
   </div>
  
   <div class="long_select">'.self::$class_selector.'</div>
