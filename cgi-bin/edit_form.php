@@ -5,6 +5,8 @@ class edit_form
     static $doctext = "";
     static $issue_date = "";
     static $title = "";
+    static $synopsis = "";
+    static $synopsis_count = 1;
     static $gpo_selector = "";
     static $class_selector = "";
     static $system_selector = "";
@@ -13,33 +15,14 @@ class edit_form
     static $subjt_selector = "";
     static $security_selector = "";
     static $docpath = "";
-    static $wdr = "";
-    static $user = "";
     static $edit_log_path = "";
-
-    public static function init($user = NULL)
-    {
-        self::$wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
-        if ($user === NULL)
-        {
-            self::$user = strtoupper($_SERVER['PHP_AUTH_USER']);
-        }
-        else
-        {self::$user = strtoupper($user);}
-    }
+	static $saved_search_params = array();
 
     
-    static function get_alpha_date($time = 'now')
+    static function get_alpha_date()
     {
-        $now = array();
-        if (is_int($time) !== false)
-        {
-            $now = getdate($time);
-        }
-        else
-        {
-            $now = getdate();
-        }
+        $now = getdate();
+        
         $yday = $now['yday'];
         $wday = $now['wday'];
         $ydaymod7 = $yday % 7;
@@ -69,39 +52,26 @@ class edit_form
         return $year.$week.$wday;
     }
 
-    public static function test_get_alpha_date($time = 'now')
-    {
-        return self::get_alpha_date($time);
-    }   
-    public static function test_calculate_new_doc_id()
-    {
-        self::init('ROOT');
-        self::calculate_new_doc_id();
-        return self::$doc_id;
-    }   
-
     static function calculate_new_doc_id()
     {
-        $daybook_files_dir = self::$wdr.'/daybook_files';
-
         $alpha_date = self::get_alpha_date();
         $year = substr($alpha_date,0,2);
         $week = substr($alpha_date,2,2);
         $wday = substr($alpha_date,4,1);
         
-        $user = self::$user;
+        $user = $GLOBALS['user'];
         if ($user == 'ROOT')
         {$user = '___';}
         $docid_root = $year.$week.$wday.$user;
         $lcyear = strtolower($year);
-        $search_dir = $daybook_files_dir.'/y'.$lcyear.'/'.$week.$wday.'/';
+        $search_dir = $GLOBALS['daybook_files_dir'].'/y'.$lcyear.'/'.$week.$wday.'/';
         $files = array();
         if (is_dir($search_dir))
         {
             $glob = $search_dir.$docid_root.'.*.txt';
             print '<p>Searching '.$glob.' <br />';
             $files = glob($glob);
-            var_dump($files);
+            //var_dump($files);
             print '<p>'."\n";
         }
         else
@@ -161,47 +131,47 @@ class edit_form
         return $year;
     }
     /*
-    static function verify_alpha_date($adate,$date)
-    {
-        //Verify that the alpha date $adate and the DateTime object $date specify the same date
-        $week = substr($adate,2,2);
-        if ($week != '53') {return true;}
-        $year = self::get_year_from_alpha_date($adate);
-        $wday = substr($adate,4,1);
-        $timestr = '1 January '.$year;
-        $jan1time = strtotime($timestr);
-        $jan1date = getdate($jan1time);
-        $jan1wday = $jan1date['wday'];
-        $yday = $week*7 + $wday - $jan1wday;
-        if ($week == '01' && $jan1wday > $wday)
-        {
-            // New Year's Day is not Sunday, but it's this week and is still in the future, so the actual year is still one less than the alpha system year
-            $year--;
-            // get number of days in this year that is nearing completion
-            $timestr = '31 December '.$year;
-            $dec31time = strtotime($timestr);
-            $dec31date = getdate($dec31time);
-            $dec31yday = $dec31date['yday'];
-            // in a non-leap year, $dec31yday is 364
-            $yday = $dec31yday + $wday + 1 - $jan1wday;
-        }
-        $date = date_create_from_format('Yz',$year.$yday);
-        $date_wday = $date->format('w');
-        return ($date_wday == $wday);
-    }
+      static function verify_alpha_date($adate,$date)
+      {
+      //Verify that the alpha date $adate and the DateTime object $date specify the same date
+      $week = substr($adate,2,2);
+      if ($week != '53') {return true;}
+      $year = self::get_year_from_alpha_date($adate);
+      $wday = substr($adate,4,1);
+      $timestr = '1 January '.$year;
+      $jan1time = strtotime($timestr);
+      $jan1date = getdate($jan1time);
+      $jan1wday = $jan1date['wday'];
+      $yday = $week*7 + $wday - $jan1wday;
+      if ($week == '01' && $jan1wday > $wday)
+      {
+      // New Year's Day is not Sunday, but it's this week and is still in the future, so the actual year is still one less than the alpha system year
+      $year--;
+      // get number of days in this year that is nearing completion
+      $timestr = '31 December '.$year;
+      $dec31time = strtotime($timestr);
+      $dec31date = getdate($dec31time);
+      $dec31yday = $dec31date['yday'];
+      // in a non-leap year, $dec31yday is 364
+      $yday = $dec31yday + $wday + 1 - $jan1wday;
+      }
+      $date = date_create_from_format('Yz',$year.$yday);
+      $date_wday = $date->format('w');
+      return ($date_wday == $wday);
+      }
     */
     
     static function verify_week_53($adate)
     {
         /* Not all alpha years have 53 weeks. Most do not.  
-		This function returns true for all $adate not in week 53
-		For $adate in week 53, returns true if $adate's alpha year has 53 weeks
-		based on the following assumptions:
-		1. Every alpha year begins on a Sunday and ends on a Saturday, regardless of what day of the week is New Year's Day.  Therefore every alpha year has exactly 52 or 53 full weeks (no partial weeks.)
-		2. Every alpha year is completed on or before December 31 of the corresponding real year.
-		Therefore, if December 31 is not Saturday, the new alpha year begins on the last Sunday of December before New Year's Day.
+           This function returns true for all $adate not in week 53
+           For $adate in week 53, returns true if $adate's alpha year has 53 weeks
+           based on the following assumptions:
+           1. Every alpha year begins on a Sunday and ends on a Saturday, regardless of what day of the week is New Year's Day.  Therefore every alpha year has exactly 52 or 53 full weeks (no partial weeks.)
+           2. Every alpha year is completed on or before December 31 of the corresponding real year.
+           Therefore, if December 31 is not Saturday, the new alpha year begins on the last Sunday of December before New Year's Day.
 		
-		  For documents in the years before 2000, this is not reliable. 
+           For documents in the years before 2000, this is not reliable. 
 		*/
         $week = substr($adate,2,2);
         print '<p>week: '.$week.'</p>';
@@ -230,6 +200,99 @@ class edit_form
         return ((31 - $date_mday) + $wday > 5);
     }
     
+	static function read_selectors(&$sql)
+    {
+		/* the doc_class, gpo and security selectors are multiple selectors to allow searches matching any of multiple values, but here, when editing or creating a document, only single values are allowed. The other selectors allow unlimited selections while searching, but limited when creating or editing; in all cases, the limits are enforced by hidden input tags and JavaScript */
+        if (isset ($_REQUEST['doc_class']))
+        {
+            $sql .= 'doc_class = '.$_REQUEST['doc_class'][0].',';
+        }
+        if (isset ($_REQUEST['gpo']))
+        {
+            $sql .= 'gpo = '.$_REQUEST['gpo'][0].', ';
+        }
+        if (isset ($_REQUEST['security']))
+        {
+            $sql .= 'security = '.$_REQUEST['security'][0].', ';
+        }
+        if (isset ($_REQUEST['system']))
+        {
+			$sysnum = 0;
+            foreach ($_REQUEST['system'] as $sys)
+            {
+                $sql .= 'syscode0'.$sysnum.' = '.$sys.', ';
+                $sysnum++;
+			}
+        }
+        if (isset ($_REQUEST['stand']))
+        {
+			$standnum = 0;
+            foreach ($_REQUEST['stand'] as $stand)
+            {
+                $sql .= 'stand0'.$standnum.' = '.$stand.', ';
+                $standnum++;
+			}
+        }
+        if (isset ($_REQUEST['subjt']))
+        {
+			$subjtnum = 0;
+            foreach ($_REQUEST['subjt'] as $subjt)
+            {
+                $sql .= 'subjt0'.$subjtnum.' = '.$subjt.', ';
+                $subjtnum++;
+			}
+        }
+        if (isset ($_REQUEST['topic']))
+        {
+			$topicnum = 0;
+            foreach ($_REQUEST['topic'] as $topic)
+            {
+                $sql .= 'topic_code0'.$topicnum.' = '.$topic.', ';
+                $topicnum++;
+			}
+        }
+	}	
+	
+	static function doc_exists($id)
+	{
+		$result = $GLOBALS['mysqli']->query('select count(*) from headerb where doc_id = "$id"');
+        if (!$result) {
+            printErr(sprintf("Query failed. Errormessage: %s", $mysqli->error));
+        }
+		$row = $result->fetch_row();
+		if ($row[0] > 0)
+		{
+			return true;
+		}
+		else  // see if the file exists
+		{
+	        $alpha_date = substr($id,0,5);
+    	    $year = substr($alpha_date,0,2);
+        	$week = substr($alpha_date,2,2);
+	        $wday = substr($alpha_date,4,1);
+	        $lcyear = strtolower($year);
+    	    $search_dir = $GLOBALS['daybook_files_dir'].'/y'.$lcyear.'/'.$week.$wday.'/';
+			printErr("Searching $search_dir for existing files");
+        	$files = array();
+        	if (is_dir($search_dir))
+        	{
+				$docnum = substr($id,-3);
+				$prefix = substr($id,0,8);
+	           	$glob = $search_dir.$prefix.'.'.$docnum.'.*.txt';
+				printErr("Searching for files matching $glob");
+ 	            $files = glob($glob);
+				var_dump($files);
+				if (count($files) > 0) 
+				{
+					printErr("Daybook files matching $glob found with no record in database");
+					return true;
+				}
+			}
+		}
+		return false;
+	}		
+		
+	
 	// Determine whether the doc_id for a new document is valid 
     static function valid_doc_id ($id)
     {
@@ -239,11 +302,26 @@ class edit_form
             // doc_id must begin with today's alpha date.
             $today_adate = self::get_alpha_date();
 			$id_adate = substr($id,0,5);
-            if ($today_adate != $id_adate) {return false;}
+            if ($today_adate != $id_adate)
+			{
+				printErr("doc_id must begin with today's alpha date ($today_adate).");
+				return false;
+			}
+			// document must not already exist
+			{
+				if (self::doc_exists($id))
+				{
+					printErr("Document already exists");
+					return false;
+				}
+			}
 			// doc_id must contain the logged-in user's 3-character username, unless the user is ROOT.
 			$user = substr($id,5,3);
-			if (($user != self::$user) && (self::$user != 'ROOT'))
-			{return false;}
+			if (($user != $GLOBALS['user']) && ($GLOBALS['user'] != 'ROOT'))
+			{
+				printErr("doc_id must contain the logged-in user's 3-character username, unless the user is ROOT.");
+				return false;
+			}
 			return true;
         }	
         return false;
@@ -282,7 +360,6 @@ class edit_form
 	
     public static function log_edit()
     {
-        self::init();
         self::$docpath = $_REQUEST['docpath'];
         /* increment version number */
         $doc_version_offset = strrpos(self::$docpath,'.',-5) + 1;
@@ -294,16 +371,18 @@ class edit_form
         $docnum_from_docpath = substr($prefix,-4,3);
         $doc_id_root_from_docpath = substr($prefix,-13,8);
         $doc_id_from_docpath = strtoupper($doc_id_root_from_docpath.$docnum_from_docpath);
-        if (isset($_REQUEST['doc_id']) && ($_REQUEST['doc_id'] != "") && (strtoupper($_REQUEST['doc_id']) != $doc_id_from_docpath))
+		$doc_id = $doc_id_from_docpath;
+        if (isset($_REQUEST['doc_id']) && ($_REQUEST['doc_id'] != "") && (strtoupper($_REQUEST['doc_id']) != $doc_id))
         {
 			if (self::valid_doc_id($_REQUEST['doc_id']))
 			{
-				$prefix = substr($prefix,0,$doc_id_offset).substr($_REQUEST['doc_id'],0,8).'.'.substr($_REQUEST['doc_id'],8,3).'.';
-				$version = self::find_latest_version_number($_REQUEST['doc_id']) + 1;
+				$doc_id = strtoupper($_REQUEST['doc_id']);
+				$prefix = substr($prefix,0,$doc_id_offset).substr($doc_id,0,8).'.'.substr($doc_id,8,3).'.';
+				$version = self::find_latest_version_number($doc_id) + 1;
 			}
 			else
 			{
-				print '<p>'.$_REQUEST['doc_id'].' is not a valid doc_id for a document created today by '.self::$user.'<br />Using default doc_id '.$doc_id_from_docpath.'</p>'."\n"; 
+				print '<p>'.$_REQUEST['doc_id'].' is not a valid doc_id for a document created today by '.$GLOBALS['user'].'<br />Using default doc_id '.$doc_id.'</p>'."\n"; 
 			}
         }
         self::$docpath = $prefix.$version.$extension;
@@ -313,16 +392,40 @@ class edit_form
         file_put_contents(self::$docpath,$_REQUEST['doctext']);
         /* log the creation of the new version */
         $sid = session_id();
-        self::$edit_log_path = self::$wdr.'/edit_log_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+        self::$edit_log_path = $GLOBALS['wdr'].'/edit_log_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
         print '<p>Appending log file '.self::$edit_log_path.'</p>';
-        $log_msg = self::$docpath."\n";
+        $log_msg = self::$docpath.$GLOBALS['file_eol'];
         file_put_contents(self::$edit_log_path,$log_msg,FILE_APPEND);
 	
         /* calculate sql (for MariaDB) to update the database with new information about the document */
-	
+		$sql = 'update master set ';
+		self::read_selectors($sql);
+		$sql = rtrim($sql,', ');
+		$sql .= ' where doc_id = '.$doc_id.';'.$GLOBALS['file_eol'];
+
+        /* update the synopsis for the document */
+        $sql2 = "";
+        self::init_synopsis_count();
+        $_REQUEST['synopsis'] = trim($_REQUEST['synopsis']);
+        $new_synopsis_count = substr_count($_REQUEST['synopsis'],"\n") + 1;
+        printErr("Synopsis lines before: ".self::$synopsis_count." after: ".$new_synopsis_count);
+        print("<pre>The full synopsis:\n".$_REQUEST['synopsis']."</pre>\n");
+        $sline = strtok($_REQUEST['synopsis'],$GLOBALS['file_eol']);
+        $i = 0;
+        while ($sline !== false)
+        {
+            $sql2 .= 'update dtl set synopsis = "'.$sline.'" where doc_id = "'.$doc_id.'" and dtl_seqno = '.$i.'; ('.strlen($sline).' chars.)'.$GLOBALS['file_eol'];
+            $i++;
+            $sline = strtok($GLOBALS['file_eol']);
+        }
+                
+
         /* execute the MariaDB sql */
 	
         /* log the MariaDB sql */
+        file_put_contents(self::$edit_log_path,$sql,FILE_APPEND);
+        if ($sql2 != "")
+        {file_put_contents(self::$edit_log_path,$sql2,FILE_APPEND);}
 	
         /* calculate the sql to update the original alpha system database, which uses Sybase */
 	
@@ -333,23 +436,68 @@ class edit_form
     static function mark_selection($selection,&$selector)
     {
 
-        $str = str_replace($selection, $selection.' selected', $selector);
-
-        if (isset($str) && (substr($str,0,6) == '<label')) 
-        {$selector = $str;}
-        else
-        {print "<p>Warning: invalid selector ".substr($selector,0,30)."...</p>\n";}	
+        $selector = str_replace($selection, $selection.' selected', $selector);
     }
+
+
+    
+    static function save_synopsis_count()
+    {
+        if (isset($_COOKIE['sc_file']) && ($_COOKIE['sc_file'] != ""))
+        {$sc_file = $_COOKIE['sc_file'];}
+        else
+        {
+            $wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
+            $sid = session_id();
+            $sc_file = $wdr.'/sc_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+            setcookie('sc_file',$sc_file);
+        }
+        // overwrite sc file
+        file_put_contents($sc_file,self::$synopsis_count);
+	}
+    static function init_synopsis_count()
+    {
+        if (isset($_COOKIE['sc_file']) && ($_COOKIE['sc_file'] != ""))
+        {
+            printErr("Getting synopsis count from server file ".$_COOKIE['sc_file']);
+            self::$synopsis_count = file_get_contents($_COOKIE['sc_file']);
+        }
+    }
+
+
+    
+	public static function save_params()
+	{
+     /*  write a copy of the search request parameters to a server file with a unique name for each session.  Exclude the 'edit', 'selectedDocData', and 'doctext' parameters, none of which are needed to redisplay the result of the previously submitted query in the search form.  In particular, 'edit' and 'selectedDocData' need to be excluded to prevent the same document or a new document from being automatically selected on the next submit. */
+        if (isset($_COOKIE['params_file']) && ($_COOKIE['params_file'] != ""))
+        {$params_file = $_COOKIE['params_file'];}
+        else
+        {
+            $wdr = str_replace('\\','/',$GLOBALS['website_doc_root']);
+            $sid = session_id();
+            $params_file = $wdr.'/params_file_for_'.$_SERVER['PHP_AUTH_USER'].'_'.$sid.'.txt';
+            setcookie('params_file',$params_file);
+        }
+        $params = serialize($_REQUEST);
+        $paramsu = unserialize($params);
+        $paramsu['edit'] = NULL;
+        $paramsu['selectedDocData'] = NULL;
+        $paramsu['doctext'] = NULL;
+        $params = serialize($paramsu);
+
+        // overwrite parameters file
+        file_put_contents($params_file,$params);
+	}
+
 
 
     public static function process_form()
     {
-        self::init();
         if ($_REQUEST['edit'] != 'new')
         {
             print '<p>processing the edit form for '.$_REQUEST['edit'].'</p>';
 
-            self::$docpath = self::$wdr.$_REQUEST['edit'];
+            self::$docpath = $GLOBALS['wdr'].$_REQUEST['edit'];
             print '<p>document path: '.self::$docpath.'</p>';
 
             self::$doctext = file_get_contents(mb_convert_encoding(self::$docpath,'UTF-8', 'ISO-8859-1'));
@@ -361,7 +509,7 @@ class edit_form
             print '<p>Creating new document</p>';
             self::calculate_new_doc_id();
         }
-        /* initialize the selectors with nothing selected, using the selection lists obtained from the database in search_form::process_form() */
+        /* initialize the selectors with nothing selected, using the selection lists obtained from the database in search_form::process_form().  Since we are using these selectors to set the metadata for a single document instead of searching for documents, the gpo, class and security selectors will no longer allow multiple selections, and the other selectors will allow only a limited number of selections as follows: system:4, stand:3, subjt:3, topic:2.  These latter limitations will be enforced by JavaScript because there is no HTML code to enforce a limited number of selections other than one.  The JavaScript is enabled by inserting the custom attribute 'max' */
         search_form::init_selectors();
 
         self::$gpo_selector = search_form::$gpo_selector;
@@ -371,15 +519,39 @@ class edit_form
         self::$stand_selector = search_form::$stand_selector;
         self::$subjt_selector = search_form::$subjt_selector;
         self::$security_selector = search_form::$security_selector;
+		
+        $max_choices = array(1,1,1,4,2,3,3);
+        $selector_ids = array('gpo','doc_class','security','system','topic','stand','subjt');
+        $selectors =  array(&self::$gpo_selector,&self::$class_selector,&self::$security_selector,&self::$system_selector,&self::$topic_selector,&self::$stand_selector, &self::$subjt_selector);
+		
+        print("<p>Imposing multiple selection limits on selection lists (no such limits exist when searching for a document): ");
+        //		$replen = strlen('[]" multiple');
+        $i = 0;
+        foreach ($selectors as &$selector)
+        {
+            if ($i > 0) {print ', ';}
+            print($selector_ids[$i].':'.$max_choices[$i]);
+            //			$pos = strpos($selector, '[]" multiple');
+            $hidden = '<input type="hidden" id="selector_'.$selector_ids[$i].'"  value="'.$max_choices[$i].'" />';
+            $selector = $hidden."\n".$selector;
+            $i++;
+        }
 
         if (isset ($_REQUEST['selectedDocData']))
         {
+            printErr('filling form with selected document metadata: '.$_REQUEST['selectedDocData']);
+            self::$synopsis_count = 1;
             $pairs = explode ('; ',$_REQUEST['selectedDocData']);
             foreach ($pairs as $pair)
             {
-                $name = strtok($pair,':');
-                $value = strtok(':');
+                $namelen = strpos($pair,':');
+                $name = substr($pair,0,$namelen);
+                $value = substr($pair,$namelen+1);
+                // for 'sys','stand', and 'topic' metadata, extract the code from the code text combination that is in the selectedDocData for display.
+                $codelen = strpos($value,' ');
+                $code = substr($value,0,$codelen);
                 $valueAttribute = 'value="'.$value.'"';
+                $valueCodeAttribute = 'value="'.$code.'"';
 
                 switch ($name) {
                 case 'issue_date': 
@@ -387,6 +559,14 @@ class edit_form
                     break;
                 case 'title': 
                     self::$title = $value;
+                    break;
+                case 'synopsis': 
+                    self::$synopsis = $value;
+                    self::$synopsis_count = substr_count($value,'|')+1;
+                    if (strlen($value) > 0)
+                    {
+                        self::$synopsis = str_replace('|',"\n",self::$synopsis);
+                    }
                     break;
                 case 'doc_class': 
                     self::mark_selection($valueAttribute, self::$class_selector);
@@ -397,29 +577,33 @@ class edit_form
                 case 'security': 
                     self::mark_selection($valueAttribute, self::$security_selector);
                     break;
-                case 'sys_code00': 
-                case 'sys_code01': 
-                case 'sys_code02': 
-                case 'sys_code03': 
-                    self::mark_selection($valueAttribute, self::$system_selector);
+                case 'sys0': 
+                case 'sys1': 
+                case 'sys2': 
+                case 'sys3':
+                    self::mark_selection($valueCodeAttribute, self::$system_selector);
                     break;
-                case 'stand00': 
-                case 'stand01': 
-                case 'stand02': 
-                    self::mark_selection($valueAttribute, self::$stand_selector);
+                case 'stand0': 
+                case 'stand1': 
+                case 'stand2':
+                    self::mark_selection($valueCodeAttribute, self::$stand_selector);
                     break;
-                case 'subjt00': 
-                case 'subjt01': 
-                case 'subjt02': 
+                case 'subjt0': 
+                case 'subjt1': 
+                case 'subjt2': 
                     self::mark_selection($valueAttribute, self::$subjt_selector);
                     break;
-                case 'topic00': 
-                case 'topic01': 
-                    self::mark_selection($valueAttribute, self::$topic_selector);
+                case 'topic0': 
+                case 'topic1': 
+                   self::mark_selection($valueCodeAttribute, self::$topic_selector);
                     break;
                 } // end switch
             } // end foreach
         } // end if isset
+
+        self::save_params();
+        self::save_synopsis_count();
+    
         print Latin1toUTF8('<div style="text-align:left">
   <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
   
@@ -434,6 +618,10 @@ class edit_form
   </div>
  <div class="long_text">
   <label for="title">title</label><br /><input type="text" class="form-text"  name="title" id="title" length="35" value="'.self::$title.'" />
+  </div>
+
+ <label for="synopsis">synopsis</label><br /><textarea name="synopsis" id="synopsis" rows="12">'.self::$synopsis.'</textarea>
+
   </div>
  
   <div class="long_select">'.self::$class_selector.'</div>

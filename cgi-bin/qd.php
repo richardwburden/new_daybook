@@ -43,6 +43,36 @@ function getSelectedDocData(doc_id)
 	var hiddenDataTag = $('<input type="hidden" name="selectedDocData" id="selectedDocData" value="'+data.prop('innerText')+'">');
 	radio.after(hiddenDataTag);
 }
+$(document).ready(function() {
+
+          var last_valid_selection = null;
+
+          $('select[multiple]').change(function(event) {
+		  
+		    // get the id of the select tag
+		  	var selector_id = $(this).attr('id');
+
+			/* check the number of selections only if a tag X with id selector_X exists where X is the id of the select tag.  The value attribute of tag X is the maximum number of selections
+			 */
+			var matches = $('#selector_' + selector_id);
+			if (matches.length > 0)
+			{
+		  		var limit = matches.eq(0).val();
+            	if ($(this).val().length > limit) 
+				{
+							alert("limit exceeded");
+
+              		$(this).val(last_valid_selection);
+            	}
+				else
+				{
+				    last_valid_selection = $(this).val();
+				} 
+			}
+
+          });
+        });
+
 </script>
 </head>
 <body>
@@ -51,11 +81,117 @@ function getSelectedDocData(doc_id)
 <?php
 session_start();
 $GLOBALS['website_doc_root'] = 'E:\as';
+$GLOBALS['wdr'] = 'E:/as';
+$GLOBALS['daybook_files_dir'] = 'E:/as/daybook_files';
+// end of line when writing to a file (operating system dependent)
+$GLOBALS['file_eol'] = "\r\n";
+date_default_timezone_set('America/New_York');
 
 function Latin1toUTF8 ($str)
 {
 	return mb_convert_encoding($str,'UTF-8','ISO-8859-1');
 }
+function printErr($str)
+{
+	print '<p>'.$str.'</p>'."\n";
+}
+
+function init_user($user = NULL)
+{
+        if ($user === NULL)
+        {
+            $GLOBALS['user'] = strtoupper($_SERVER['PHP_AUTH_USER']);
+            $GLOBALS['usr'] = strtolower($_SERVER['PHP_AUTH_USER']);
+        }
+        else
+        {
+			$GLOBALS['user'] = strtoupper($user);
+			$GLOBALS['usr'] = strtolower($user);
+		}
+		if  ($GLOBALS['usr'] == '')
+		{
+			$GLOBALS['user'] = 'GUEST';
+			$GLOBALS['usr'] = 'guest';
+			$_SERVER['PHP_AUTH_PW'] = '';
+		}
+}
+// use this function to disable non-guest logins.
+function init_guest()
+{
+    // exception for user 'reset' allows logout.
+    if ($_SERVER['PHP_AUTH_USER'] != 'reset' || $_SERVER['PHP_AUTH_PW'] != 'reset' || isset($_GET['Logout']) === false)
+    {
+        $GLOBALS['user'] = 'GUEST';
+        $GLOBALS['usr'] = 'guest';
+        $_SERVER['PHP_AUTH_PW'] = '';
+        $_SERVER['PHP_AUTH_USER'] = 'guest';
+    }
+    else
+    {
+        $GLOBALS['usr'] = 'reset';
+    }
+}
+
+function init_db_session($user = NULL)
+{
+    //init_user($user);
+    init_guest();
+        $GLOBALS['doc_edit_permissions'] = array();
+        $GLOBALS['edit'] = false;  //true if headers found which the user has permission to edit
+
+        $pwd = $_SERVER['PHP_AUTH_PW'];
+
+        ini_set('max_execution_time', 300);
+
+
+        $GLOBALS['mysqli'] = new mysqli("localhost", $GLOBALS['usr'], $pwd);
+
+        /* check connection */
+        if ($GLOBALS['mysqli']->connect_errno) {
+            printf("Connect failed: %s\n", $GLOBALS['mysqli']->connect_error);
+            exit();
+        }
+
+        if (!$GLOBALS['mysqli']->query("use ndaybook")) {
+            printf("Errormessage: %s\n", $GLOBALS['mysqli']->error);
+        }
+
+}
+function process_wildcards(&$expr, &$invalid_fields, $field_name, $maxLen = 0)
+{
+    $expr_saved = $expr;
+    
+    // we assume that underscores are not intended to be wildcards,
+    // so we escape them.
+    $s = str_replace('_','\\_',$expr);
+    // question marks are assumed to be wildcards unless escaped.
+    // if not escaped, they must be converted to the proper MariaDB
+    // wildcard.
+    $s = str_replace('\\?','\x0',$s);
+    $s = str_replace('?','_',$s);
+    $s = str_replace('\x0','?',$s);
+    // asterisks are assumed to be wildcards unless escaped.
+    // if not escaped, they must be converted to the proper MariaDB
+    // wildcard.
+    // percent signs will be treated as MariaDB treats them,
+    // as wildcards unless escaped.
+    $s = str_replace('\\*','\x0',$s);
+    $s = str_replace('*','%',$s);
+    $s = str_replace('\x0','*',$s);
+    // the length returned by strlen counts backslashes used to 
+    // escape characters in the query as characters.
+    $maxLen += substr_count($s,'\\%');
+    $maxLen += substr_count($s,'\\_');
+    $sLen = strlen($s);
+    if ($maxLen > 0 && $sLen > $maxLen)
+    {
+        $invalid_fields .= "$field_name: $expr_saved [$sLen chars.;too long], ";
+        return false;
+    }
+    $expr = $s;
+    return true;
+}
+
 
 include "search_form.php";
 
@@ -72,32 +208,31 @@ $Logout             = false;
  
 // Check username and password:
 if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
-	$usr = strtolower ($_SERVER['PHP_AUTH_USER']);
+    //	init_user();
+    init_guest();
 	$pwd = $_SERVER['PHP_AUTH_PW'];
 	
-	if ($usr == '') {$usr = 'guest'; $pwd = ''; $_SERVER['PHP_AUTH_USER'] = 'guest'; $_SERVER['PHP_AUTH_PW'] = '';}
-
  	if ($usr == 'reset' && $pwd == 'reset' && isset($_GET['Logout'])){ 
         // reset is a special login for logout ;-)
         $Logout = true;
     }
 	else
 	{
-		//ini_set('max_execution_time', 300);
+		ini_set('max_execution_time', 300);
 
-		$mysqli = new mysqli("localhost", "root", "UbetrBabl2bkitup");
+		$GLOBALS['mysqli'] = new mysqli("localhost", "root", "/");
 	/* check connection */
-		if ($mysqli->connect_errno) {
-    		printf("Connect failed: %s\n", $mysqli->connect_error);
+		if ($GLOBALS['mysqli']->connect_errno) {
+    		printf("Connect failed: %s\n", $GLOBALS['mysqli']->connect_error);
 	    	exit();
 		}
 
-		$usrquery = "select password from mysql.user where user='$usr'";
+		$usrquery = "select authentication_string from mysql.user where user='$usr'";
 	
 		// print("<p>authentication query: $usrquery</p>\n");
-		$usrresult = $mysqli->query($usrquery);
+		$usrresult = $GLOBALS['mysqli']->query($usrquery);
 		if (!$usrresult) {
-    		printf("Query failed. Errormessage: %s\n", $mysqli->error);
+    		printf("Query failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
 		}
 		else 
 		{
@@ -107,21 +242,24 @@ if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])){
 				$dbpwd = $row[0];
 				if ($dbpwd != '')
 				{
-					$hashquery = "select sha1(unhex(sha1('$pwd')))";
-					$hashresult = $mysqli->query($hashquery);
+					$hashquery = "select password('$pwd')";
+					$hashresult = $GLOBALS['mysqli']->query($hashquery);
 					$row = $hashresult->fetch_row();
-					$mysqli->close();
-					$pwd = strtoupper('*'.$row[0]);
+					$GLOBALS['mysqli']->close();
+                    $pwd = $row[0];
+					// $pwd = strtoupper('*'.$row[0]);
 				}
 				if ($pwd == $dbpwd)
 				{
     	    		$LoginSuccessful = true;
     			}
-				/* else  //for debugging; remove!
+                /*
+				 else  //for debugging; remove!
 				{
 					print("<p>Password hash is $dbpwd; the hash of what you entered is $pwd</p>\n");
-				
-				} */
+                    exit;
+				} 
+                */
 			}
 		}
 	}
@@ -131,6 +269,8 @@ if ($Logout){
  
     // The user clicked on "Logout"
 setcookie('selectors_file',"");
+setcookie('params_file',"");
+setcookie('sc_file',"");
 
 //header('location: index.php');
 
@@ -140,9 +280,11 @@ setcookie('selectors_file',"");
 }
 else if ($LoginSuccessful)
 {
+	init_db_session();
 	if (isset ($_REQUEST['edit']) && ($_REQUEST['edit'] != "noedit"))
 	{
-		print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';
+        if ($_REQUEST['edit'] != "new")
+		{print '<p>You have opened  '.$_REQUEST['edit'].' for editing</p>';}
  
 	 /* open document for editing */
 		edit_form::process_form();

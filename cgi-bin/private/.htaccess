@@ -1,5 +1,0 @@
-AuthUserFile 'W:/new_alpha_system/.htpassword1'
-AuthName "Private area"
-AuthType Basic
-Require valid-user
-ErrorDocument 401 default
