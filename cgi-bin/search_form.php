@@ -10,6 +10,8 @@ class search_form
     public static $stand_selector = "";
     public static $subjt_selector = "";
     public static $security_selector = "";
+    public static $max_rows_plus = 0;
+    public static $first_rownum_minus = 0;
 
     static $mysqli = NULL;
     static $patterns = "";
@@ -238,7 +240,7 @@ class search_form
         if ($count_result)
         {
             $row = $count_result->fetch_row();
-            $count_msg = "<p>$row[0] headers found; ";
+            $count_msg = "<p>$row[0] headers found ";
         }
 
         $result = $mysqli->query($sql);
@@ -251,13 +253,37 @@ class search_form
             $idx = 'p';  
             if (strpos($sql,'tempb') !== false) {$idx = 't';}
 		
-            $row = "";
+            $row = ""; /* each $row will contain the HTML formatted data of one header, which may combine several rows of data returned by the database query, one for each line of the synopsis */
             $synopsis = "synopsis:";
             $last_id = "";
+            $first_id = "";
 			$num_ids = 0;
+            $num_data_rows = 0;
+            $num_data_rows_processed = 0;
 			$edit_radio = "";
+            $last_synopsis_complete = true;
+            $first_synopsis_complete = true;
             while ($data = $result->fetch_array())
             {
+                $num_data_rows++; /* rows of data returned by the database query, which may be greater than $num_ids, and may be up to two rows greater than what the user intended and what will actually become part of the listing of headers, in order to see whether a header is split across the last skipped row or the last row included within the limit. If a header is found to be split, this is indicated with [SYNOPSIS INCOMPLETE] in boldface at the end of the header. */
+                if ($num_data_rows == 1)
+                {
+                    $first_id = $data['doc_id'];
+                    if ($first_rownum > 0)
+                    {continue;}
+                }
+                if ($num_data_rows == self::$max_rows_plus)
+                {
+                    if ($data['doc_id'] == $last_id)
+                    {
+                        $last_synopsis_complete = false;
+                    }
+                    continue;
+                }
+                $num_data_rows_processed++; /* rows of data actually processed */
+                if ($first_rownum > 0 && $num_data_rows == 2 && $data['doc_id'] == $first_id)
+                {$first_synopsis_complete = false;}
+                
                 if ($data['doc_id'] != $last_id)
                 {
                     if ($last_id != "")
@@ -265,7 +291,12 @@ class search_form
                         // complete previous row
                         $row .= $synopsis;
                         $row = substr($row,0,-1); //remove final '|'
+
+                        if ($num_ids == 0 && $first_synopsis_complete === false)
+                        {$row .= '<b> [SYNOPSIS INCOMPLETE]</b>';}
+ 
                         $row .= '</div>';
+
                         if ($edit_radio != "")
                         {
                             $editable_headers .= '<div class="header">'.$row."</div>\n";
@@ -355,7 +386,12 @@ class search_form
 			if ($row != "")
 			{
             	$row .= $synopsis;
+
 	            $row = substr($row,0,-1); //remove final '|'
+
+                if ($last_synopsis_complete === false)
+                {$row .= '<b> [SYNOPSIS INCOMPLETE]</b>';}
+
     	        $row .= '</div>';
 				$num_ids++;
             	if ($edit_radio != "")
@@ -367,7 +403,7 @@ class search_form
                 	$headers .= '<div class="header">'.$row."</div>\n";
             	}
 			}
-			print $num_ids.' headers shown after first '.	$first_rownum.' skipped.</p>'."\n";
+			print $num_ids.' headers shown ('.$num_data_rows_processed.' rows of data) after first '.	$first_rownum.' rows of data skipped. The database places each line of the synopsis in a separate row of data; each header combines all the lines of synopsis for a doc_id found in the <i>limited</i> query results. If the lines of synopsis for a header are split across the first or last row of the <i>limited</i> query results and the rows of the unlimited query results that precede or follow, this is indicated with <b>[SYNOPSIS INCOMPLETE]</b> at the end of the first or last header in the listing.</p>'."\n";
         } // end query succeeded
 
         return $editable_headers.$headers;
@@ -728,7 +764,14 @@ class search_form
         {$sql = substr($sql,0,-5);} // remove final ' and '
         else
         {$sql .= '0';}
-        $sql .= $stand_filter.'order by h.doc_id, d.dtl_seqno asc limit '.$first_rownum.', '.$max_rows;
+
+        self::$first_rownum_minus = $first_rownum - 1;
+        self::$max_rows_plus = $max_rows + 2;
+        if (self::$first_rownum_minus < 0)
+        {self::$first_rownum_minus = 0; self::$max_rows_plus = $max_rows + 1;}
+
+        $sql .= $stand_filter.'order by h.doc_id, d.dtl_seqno asc limit '.self::$first_rownum_minus.', '.self::$max_rows_plus;
+
         $sql_count = str_replace ('select h.doc_id','select count(distinct(h.doc_id))',$sql);
 		// printErr ('sql_count: '.$sql_count);
         $sql2 = str_replace('headerb','tempb',$sql);
@@ -753,7 +796,7 @@ class search_form
         {$invalid_fields = substr($invalid_fields,0,-2); print "<p>invalid fields: $invalid_fields</p>\n";}
  
         if ($first_rownum == 0 && $max_rows == 1000 && $invalid_fields == "")
-        {print "<p>By default, the first 1000 headers found will be shown.  If a different range is desired, enter the number of headers to be skipped before the 1000 that will be shown, if they exist, or enter a smaller \"max. number of headers\".</p>\n";
+        {print "<p>By default, the first 1000 rows of data found will be shown.  If a different range is desired, enter the number of rows of data to be skipped before the 1000 that will be shown, if they exist, or enter a smaller \"max. number of rows of data\".</p>\n";
         } 
 		
 		if ($GLOBALS['user'] == 'GUEST')
@@ -806,10 +849,10 @@ class search_form
   <form action="https://'.$GLOBALS['CurrentUrl'].'" method="POST">
   
    <div class="short_text">
-  <label for="first_rownum">headers to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="'.$first_rownum.'" />
+  <label for="first_rownum">rows of data to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="'.$first_rownum.'" />
   </div>
   <div class="short_text">
-  <label for="max_rows"> max. number of headers (min. 1, max. 1000)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="'.$max_rows.'" />
+  <label for="max_rows"> max. number of rows of data (min. 1, max. 1000)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="'.$max_rows.'" />
   </div>
   <div class="short_text">
   <label for="permidx">Permanent index</label> <input type="checkbox" class="form-checkbox"  name="permidx" id="permidx" '.$permidx.' />
