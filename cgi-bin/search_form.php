@@ -66,7 +66,7 @@ class search_form
                 $valueAttribute = 'value="'.$seccode.'"';
                 self::$security_selector = str_replace($valueAttribute,$valueAttribute.' selected',self::$security_selector);
             }
-            $sql .= 'security in ('.self::parray($security).') and ';
+            $sql .= 'h.security in ('.self::parray($security).') and ';
         }
 
         if (isset ($_REQUEST['system']))
@@ -693,7 +693,7 @@ class search_form
 
         if (isset ($_REQUEST['issue_date']) && $_REQUEST['issue_date'] != "")
         {
-            printErr('issue_date set to "'.$_REQUEST['issue_date'].'"');
+            // print 'issue_date set to "'.$_REQUEST['issue_date'].'"';
             $issue_date = trim($_REQUEST['issue_date']);
             $issue_date_saved = $issue_date;
             // $issue_date_saved is used to pre-fill the form.
