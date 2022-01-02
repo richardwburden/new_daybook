@@ -26,6 +26,11 @@ div.logout {clear:none; display:inline; margin:0 0 0 12px;  font-weight:bold;}
 
 .headersHeader{text-align:center;font-weight:bold}
 h2 {text-align:center}
+.warning {color:#CC0000;font-weight:bold}
+.error, .errbar {color:#FF6600; background-color:black; font-weight:bold}
+                 .errbar {padding: 3pt 0; text-align:center}
+                 .highlight {background-color:yellow}
+
 </style>
 <script type="text/javascript" src="/site/js/jquery-1.11.3.min.js">
 	</script>
@@ -93,7 +98,7 @@ function Latin1toUTF8 ($str)
 }
 function printErr($str)
 {
-	print '<p>'.$str.'</p>'."\n";
+	print '<p class="error">'.$str.'</p>'."\n";
 }
 
 function init_user($user = NULL)

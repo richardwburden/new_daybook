@@ -403,7 +403,7 @@ class search_form
                 	$headers .= '<div class="header">'.$row."</div>\n";
             	}
 			}
-			print $num_ids.' headers shown ('.$num_data_rows_processed.' rows of data) after first '.	$first_rownum.' rows of data skipped. The database places each line of the synopsis in a separate row of data; each header combines all the lines of synopsis for a doc_id found in the <i>limited</i> query results. If the lines of synopsis for a header are split across the first or last row of the <i>limited</i> query results and the rows of the unlimited query results that precede or follow, this is indicated with <b>[SYNOPSIS INCOMPLETE]</b> at the end of the first or last header in the listing.</p>'."\n";
+			print '<span class="highlight">'.$num_ids.' headers shown ('.$num_data_rows_processed.' rows of data) after first '.	$first_rownum.' rows of data skipped.</span> The database places each line of the synopsis in a separate row of data; each header combines all the lines of synopsis for a doc_id found in the <i>limited</i> query results. If the lines of synopsis for a header are split across the first or last row of the <i>limited</i> query results and the rows of the unlimited query results that precede or follow, this is indicated with <b>[SYNOPSIS INCOMPLETE]</b> at the end of the first or last header in the listing.</p>'."\n";
         } // end query succeeded
 
         return $editable_headers.$headers;
@@ -421,36 +421,40 @@ class search_form
         {
             print '<p>Filling selection lists from server file '.$_COOKIE['selectors_file'].'</p>';
             $selectors = file_get_contents($_COOKIE['selectors_file']);
+            if ($selectors === false)
+            {
+                print("<div class='errbar'>File read failed</div>\n");
+            }
             if (! isset($selectors) || (substr($selectors,0,6) != '<label')) 
-            {print "<p>Warning: invalid selectors ".substr($selectors,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selectors ".substr($selectors,0,30)."...</p>\n";}
 	
             self::$gpo_selector = strtok($selectors,'#%#');
             if (! isset(self::$gpo_selector) || (substr(self::$gpo_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$gpo_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$gpo_selector,0,30)."...</p>\n";}
 	
             self::$class_selector = strtok('#%#');
             if (! isset(self::$class_selector) || (substr(self::$class_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$class_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$class_selector,0,30)."...</p>\n";}
 	
             self::$system_selector = strtok('#%#');
             if (! isset(self::$system_selector) || (substr(self::$system_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$system_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$system_selector,0,30)."...</p>\n";}
 	
             self::$topic_selector = strtok('#%#');
             if (! isset(self::$topic_selector) || (substr(self::$topic_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$topic_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$topic_selector,0,30)."...</p>\n";}
 	
             self::$stand_selector = strtok('#%#');
             if (! isset(self::$stand_selector) || (substr(self::$stand_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$stand_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$stand_selector,0,30)."...</p>\n";}
 	
             self::$subjt_selector = strtok('#%#');
             if (! isset(self::$subjt_selector) || (substr(self::$subjt_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$subjt_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$subjt_selector,0,30)."...</p>\n";}
 	
             self::$security_selector = strtok('#%#');
             if (! isset(self::$security_selector) || (substr(self::$security_selector,0,6) != '<label')) 
-            {print "<p>Warning: invalid selector ".substr(self::$security_selector,0,30)."...</p>\n";}
+            {print "<p class='warning'>Warning: invalid selector ".substr(self::$security_selector,0,30)."...</p>\n";}
 
             return;
         }
@@ -458,7 +462,7 @@ class search_form
         self::$gpo_selector = "";
         $result = $GLOBALS['mysqli']->query("select distinct gpo from master order by gpo asc");
         if (!$result) {
-            printf("query to list gpos failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>query to list gpos failed. Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -473,7 +477,7 @@ class search_form
         self::$security_selector = "";
         $result = $GLOBALS['mysqli']->query("select distinct security from master order by security asc");
         if (!$result) {
-            printf("query to list security levels failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>query to list security levels failed. Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -488,7 +492,7 @@ class search_form
         self::$class_selector = "";
         $result = $GLOBALS['mysqli']->query("select code, trim(text) as text from class order by text");
         if (!$result) {
-            printf("Query to list document classes failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>Query to list document classes failed. Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -504,7 +508,7 @@ class search_form
         self::$system_selector = "";
         $result = $GLOBALS['mysqli']->query("select code, trim(text) as text from system order by text");
         if (!$result) {
-            printf("Query to list systems failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>Query to list systems failed. Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -519,7 +523,7 @@ class search_form
         self::$topic_selector = "";
         $result = $GLOBALS['mysqli']->query("select code, text, trim(both '\t' from trim(both '\"' from trim(both '\'' from trim(text)))) as t from topic order by t");
         if (!$result) {
-            printf("Query to list topics failed. Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>Query to list topics failed. Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -534,7 +538,7 @@ class search_form
         self::$stand_selector = "";
         $result = $GLOBALS['mysqli']->query("select code, text from stand order by code");
         if (!$result) {
-            printf("Query to list stands failed: Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>Query to list stands failed: Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -550,7 +554,7 @@ class search_form
         self::$subjt_selector = "";
         $result = $GLOBALS['mysqli']->query("select distinct subjt from dtl order by subjt asc");
         if (!$result) {
-            printf("Query to list subjts failed: Errormessage: %s\n", $GLOBALS['mysqli']->error);
+            printf("<span class='error'>Query to list subjts failed: Errormessage: %s</span>\n", $GLOBALS['mysqli']->error);
         }
         else
         {
@@ -793,7 +797,7 @@ class search_form
         }
 
         if (strlen($invalid_fields) > 2)
-        {$invalid_fields = substr($invalid_fields,0,-2); print "<p>invalid fields: $invalid_fields</p>\n";}
+        {$invalid_fields = substr($invalid_fields,0,-2); print "<p class='warning'>invalid fields: $invalid_fields</p>\n";}
  
         if ($first_rownum == 0 && $max_rows == 1000 && $invalid_fields == "")
         {print "<p>By default, the first 1000 rows of data found will be shown.  If a different range is desired, enter the number of rows of data to be skipped before the 1000 that will be shown, if they exist, or enter a smaller \"max. number of rows of data\".</p>\n";
@@ -835,11 +839,11 @@ class search_form
         {
             if ($invalid_fields != "")
             {
-                print "<p><b>Daybook query not submitted due to invalid fields</b></p>\n";
+                print "<p class='warning'><b>Daybook query not submitted due to invalid fields</b></p>\n";
             }
             else
             {
-                print "<p><b>Form not filled; query too general.</b> Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
+                print "<p class='warning'><b>Form not filled; query too general.</b> Uncheck the permanent index and check the temporary index, or make a selection or enter text in one of the fields below the bar.</p>\n";
             }
 
             $headers = '<br /><br />'.$new_radio;
@@ -860,7 +864,7 @@ class search_form
  
   </div>
   <hr />
- <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />Applies only when NOT using <a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expressions</a>, however, it is useful to note the pattern and length limits for specific fields below when constructing regular expressions for those fields.<br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string (do not use this in the doc_id.)  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits<br /><b>title</b> must be less than 36 characters.<br /><b>synopsis</b> must be less than 66 characters.
+ <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />Applies only when NOT using <a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expressions</a>, however, it is useful to note the pattern and length limits for specific fields below when constructing regular expressions for those fields.<br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string <b>(do not use this in the doc_id.)</b>  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query, but <b>do not use _ as a wildcard;</b> it will be converted to \_ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits; <b>do not use ? or put * or % before a digit in issue_date</b><br /><b>title</b> must be less than 36 characters.<br /><b>synopsis</b> must be less than 66 characters.
   </p>
 <div class="short_text">
      <label for="tempidx">Use MariaDB regular expressions</label> <input type="checkbox" class="form-checkbox"  name="regexp" id="regexp" '.$regexp.' /><br />Uncheck to use wildcards<br /><a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expression syntax</a>
