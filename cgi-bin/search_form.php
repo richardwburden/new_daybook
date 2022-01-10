@@ -16,6 +16,34 @@ class search_form
     static $mysqli = NULL;
     static $patterns = "";
 
+    public static function toallcaps($str)
+    {
+        //capitalize every letter except the names of POSIX character classes
+        $allcaps = strtoupper($str);
+        $i = 0;
+        $k = strlen($str);
+        while ($i < $k)
+        {
+            $i = strpos($str,'[[',$i);
+            if ($i === false) {break;}
+            $j = strpos($str,']]',$i+2);
+            if ($j === false) {break;}
+            $replen = $j - ($i+2);
+            //printErr('replen: '.$replen);
+
+            if ($replen > 0)
+            {
+                $replacement = substr($str,$i+2,$replen);
+                //printErr('replacement: '.$replacement);
+
+                $allcaps = substr_replace($allcaps,$replacement,$i+2,$replen);
+            }
+            $i = $j+2;
+        }
+        //printErr('allcaps: '.$allcaps);
+        return $allcaps;
+    }
+
     static function parray ($arr)
     {
         $output = "";
@@ -679,7 +707,7 @@ class search_form
         if (isset ($_REQUEST['doc_id']) && $_REQUEST['doc_id'] != "")
         {
             $doc_id = trim($_REQUEST['doc_id']);
-            $doc_id = strtoupper($doc_id);
+            $doc_id = self::toallcaps($doc_id);
             $doc_id_saved = $doc_id;
             // $doc_id_saved is used to pre-fill the form.
             if (self::valid_doc_id($doc_id, $like_or_regexp))
@@ -708,7 +736,8 @@ class search_form
         if (isset ($_REQUEST['title']) && $_REQUEST['title'] != "")
         {
             $title = trim($_REQUEST['title']);
-            $title = strtoupper($title);
+            $title = self::toallcaps($title);
+            //$title = strtoupper($title);
             $title_saved = $title;
             // $title_saved is used to pre-fill the form.
             $valid = true;
@@ -728,7 +757,7 @@ class search_form
         if (isset ($_REQUEST['synopsis']) && $_REQUEST['synopsis'] != "")
         {
             $synopsis = trim($_REQUEST['synopsis']);
-            $synopsis = strtoupper($synopsis);
+            $synopsis = self::toallcaps($synopsis);
             $synopsis_saved = $synopsis;
             // $synopsis_saved is used to pre-fill the form.
             $valid = true;
