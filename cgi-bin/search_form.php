@@ -16,32 +16,18 @@ class search_form
     static $mysqli = NULL;
     static $patterns = "";
 
-    public static function toallcaps($str)
+    public static function toallcaps($str, $like_or_regexp = 'like')
     {
-        //capitalize every letter except the names of POSIX character classes
-        $allcaps = strtoupper($str);
-        $i = 0;
-        $k = strlen($str);
-        while ($i < $k)
+        if ($like_or_regexp == 'like')
         {
-            $i = strpos($str,'[[',$i);
-            if ($i === false) {break;}
-            $j = strpos($str,']]',$i+2);
-            if ($j === false) {break;}
-            $replen = $j - ($i+2);
-            //printErr('replen: '.$replen);
-
-            if ($replen > 0)
-            {
-                $replacement = substr($str,$i+2,$replen);
-                //printErr('replacement: '.$replacement);
-
-                $allcaps = substr_replace($allcaps,$replacement,$i+2,$replen);
-            }
-            $i = $j+2;
+        //capitalize all letters
+            return strtoupper($str);
         }
-        //printErr('allcaps: '.$allcaps);
-        return $allcaps;
+        else if (strpos($str,'(?i)') === false)
+        { // make search case-insensitive
+            return '(?i)'.$str;
+        }
+        else {return $str;}
     }
 
     static function parray ($arr)
@@ -707,7 +693,7 @@ class search_form
         if (isset ($_REQUEST['doc_id']) && $_REQUEST['doc_id'] != "")
         {
             $doc_id = trim($_REQUEST['doc_id']);
-            $doc_id = self::toallcaps($doc_id);
+            $doc_id = self::toallcaps($doc_id, $like_or_regexp);
             $doc_id_saved = $doc_id;
             // $doc_id_saved is used to pre-fill the form.
             if (self::valid_doc_id($doc_id, $like_or_regexp))
@@ -736,7 +722,7 @@ class search_form
         if (isset ($_REQUEST['title']) && $_REQUEST['title'] != "")
         {
             $title = trim($_REQUEST['title']);
-            $title = self::toallcaps($title);
+            $title = self::toallcaps($title, $like_or_regexp);
             //$title = strtoupper($title);
             $title_saved = $title;
             // $title_saved is used to pre-fill the form.
@@ -757,7 +743,7 @@ class search_form
         if (isset ($_REQUEST['synopsis']) && $_REQUEST['synopsis'] != "")
         {
             $synopsis = trim($_REQUEST['synopsis']);
-            $synopsis = self::toallcaps($synopsis);
+            $synopsis = self::toallcaps($synopsis, $like_or_regexp);
             $synopsis_saved = $synopsis;
             // $synopsis_saved is used to pre-fill the form.
             $valid = true;
@@ -893,7 +879,12 @@ class search_form
  
   </div>
   <hr />
- <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br /><b>Wildcards:</b><br />Applies only when NOT using <a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expressions</a>, however, it is useful to note the pattern and length limits for specific fields below when constructing regular expressions for those fields.<br />To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string <b>(do not use this in the doc_id.)</b>  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query, but <b>do not use _ as a wildcard;</b> it will be converted to \_ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits; <b>do not use ? or put * or % before a digit in issue_date</b><br /><b>title</b> must be less than 36 characters.<br /><b>synopsis</b> must be less than 66 characters.
+ <p>In any of the fields below, enter a word or phrase to find headers that contain the word or phrase in the same field.  All fields are case-insensitive.  You may also select 1 or more items from each selection list.  To select multiple items from a list, hold down the Ctrl key while clicking each item. To deselect an item in the selection list, hold down the Ctrl key while clicking the item.  To deselect all items, click an item that has not been selected while not holding down the Ctrl key, then deselect that one item by holding down the Ctrl key while clicking it.<br />
+<a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank"><b>MariaDB regular expressions:</b></a><br />
+<b>automatically begin with (?i)</b> to make the expression case-insensitive, because all titles, doc_ids and synopses in this database are all capital letters. Note that a double backslash is needed to escape anything, e.g., use \\\\b to indicate a word boundary. Because many titles use underscores instead of spaces to separate words, you will want to use (\\\\b|_) to indicate a word boundary in the title.<br />
+<b>Wildcards:</b><br />Applies only when NOT using <a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expressions</a>, however, it is useful to note the pattern and length limits for specific fields below when constructing regular expressions for those fields.<br />
+<b>Wildcards are automatically converted to all-capitals.</b><br />
+To escape, precede each wildcard character that you wish to escape with a backslash, e.g. *\** matches any string with at least one asterisk.<br />* or % matches any string <b>(do not use this in the doc_id.)</b>  Will be converted to % in the query.<br />? matches any single character. Will be converted to _ in the query, but <b>do not use _ as a wildcard;</b> it will be converted to \_ in the query.<br /><b>doc_id</b> must be exactly 11 characters of form YYWWDUUUNNN where YY is the last 2 digits of the year, with A0-A9 for 2000-2009, B0-B9 for 2010-2019, etc; WW is the week (01-53), D is the day of the week (1-7), UUU is the username (3 characters), and NNN is the document number (3 characters). ? may substitute for any character.<br /><b>issue_date</b> must be 6 digits. * or % may expand to fill remaining digits; <b>do not use ? or put * or % before a digit in issue_date</b><br /><b>title</b> must be less than 36 characters.<br /><b>synopsis</b> must be less than 66 characters.
   </p>
 <div class="short_text">
      <label for="tempidx">Use MariaDB regular expressions</label> <input type="checkbox" class="form-checkbox"  name="regexp" id="regexp" '.$regexp.' /><br />Uncheck to use wildcards<br /><a href="https://mariadb.com/kb/en/regular-expressions-overview/" target="_blank">MariaDB regular expression syntax</a>
