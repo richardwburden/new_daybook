@@ -223,7 +223,7 @@ class search_form
     }
     static function valid_max_rows($num)
     {
-        if (is_numeric($num) && $num >= 1 && $num <= 1000 && is_int($num + 0)) {return true;}
+        if (is_numeric($num) && $num >= 1 /* && $num <= 1000 */ && is_int($num + 0)) {return true;}
         else {return false;}
     }
 
@@ -420,7 +420,7 @@ class search_form
 			print '<span class="highlight">'.$num_ids.' headers shown ('.$num_data_rows_processed.' rows of data) after first '.	$first_rownum.' rows of data skipped.</span> The database places each line of the synopsis in a separate row of data; each header combines all the lines of synopsis for a doc_id found in the <i>limited</i> query results. If the lines of synopsis for a header are split across the first or last row of the <i>limited</i> query results and the rows of the unlimited query results that precede or follow, this is indicated with <b>[SYNOPSIS INCOMPLETE]</b> at the end of the first or last header in the listing.</p>'."\n";
         } // end query succeeded
 
-        return $editable_headers.$headers;
+        return $editable_headers.'<div id="headers">'.$headers.'</div>';
     }
 
 
@@ -815,7 +815,7 @@ class search_form
         {$invalid_fields = substr($invalid_fields,0,-2); print "<p class='warning'>invalid fields: $invalid_fields</p>\n";}
  
         if ($first_rownum == 0 && $max_rows == 1000 && $invalid_fields == "")
-        {print "<p>By default, the first 1000 rows of data found will be shown.  If a different range is desired, enter the number of rows of data to be skipped before the 1000 that will be shown, if they exist, or enter a smaller \"max. number of rows of data\".</p>\n";
+        {print "<p>By default, the first 1000 rows of data found will be shown.  If a different range is desired, enter the number of rows of data to be skipped before the 1000 that will be shown, if they exist, or enter any positive integer in \"max. number of rows of data\".</p>\n";
         } 
 		
 		if ($GLOBALS['user'] == 'GUEST')
@@ -871,7 +871,7 @@ class search_form
   <label for="first_rownum">rows of data to skip</label> <input type="text" class="form-text" length="12" name="first_rownum" id="first_rownum" value="'.$first_rownum.'" />
   </div>
   <div class="short_text">
-  <label for="max_rows"> max. number of rows of data (min. 1, max. 1000)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="'.$max_rows.'" />
+  <label for="max_rows"> max. number of rows of data (any positive integer)</label> <input type="text" class="form-text" length="12" name="max_rows" id="max_rows" value="'.$max_rows.'" />
   </div>
   <div class="short_text">
   <label for="permidx">Permanent index</label> <input type="checkbox" class="form-checkbox"  name="permidx" id="permidx" '.$permidx.' />
